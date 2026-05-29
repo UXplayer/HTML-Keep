@@ -910,7 +910,11 @@ final class WebPageLibrary {
             fileManager: fileManager
         )
         let now = Date()
-        let projectBaseTitle = Self.archiveTitle(from: sourceURL)
+        let projectBaseTitle = Self.archiveTitle(
+            from: sourceURL,
+            defaultEntry: defaultEntry,
+            htmlContent: htmlContent
+        )
         var page = WebPage(
             id: id,
             title: uniqueTitle(for: projectBaseTitle),
@@ -4161,6 +4165,19 @@ final class WebPageLibrary {
     private static func archiveTitle(from url: URL) -> String {
         let name = url.deletingPathExtension().lastPathComponent
         return name.isEmpty ? AppStrings.localized("未命名网页") : name
+    }
+
+    private static func archiveTitle(
+        from url: URL,
+        defaultEntry: WebPageEntry,
+        htmlContent: String
+    ) -> String {
+        if defaultEntry.source == nil,
+           let htmlTitle = documentTitle(from: htmlContent) {
+            return htmlTitle
+        }
+
+        return archiveTitle(from: url)
     }
 
     private static func normalizedDisplayTitle(_ title: String) -> String {
