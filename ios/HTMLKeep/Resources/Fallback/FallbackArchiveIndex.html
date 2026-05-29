@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>文件清单</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --page-top: #f6faff;
+            --page-bottom: #eef5f7;
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-border: rgba(90, 112, 128, 0.18);
+            --ink: #20313d;
+            --secondary: #647582;
+            --accent: #386cff;
+            --icon-bg: #e9f1ff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --page-top: #10181f;
+                --page-bottom: #17232b;
+                --surface: rgba(31, 42, 50, 0.92);
+                --surface-border: rgba(226, 236, 242, 0.14);
+                --ink: #d4d9dc;
+                --secondary: #a9b5bc;
+                --accent: #8fb4ff;
+                --icon-bg: #25384b;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            min-height: 100%;
+            background: linear-gradient(180deg, var(--page-top), var(--page-bottom));
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 28px 16px 40px;
+        }
+
+        main {
+            width: min(720px, 100%);
+            margin: 0 auto;
+        }
+
+        header {
+            padding: 4px 4px 18px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            line-height: 1.15;
+            letter-spacing: 0;
+        }
+
+        .summary {
+            margin: 0;
+            color: var(--secondary);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .panel {
+            overflow: hidden;
+            border: 1px solid var(--surface-border);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .file-row {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            min-height: 64px;
+            padding: 12px 14px;
+            border-top: 1px solid var(--surface-border);
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .file-row:first-child {
+            border-top: 0;
+        }
+
+        .file-row:active {
+            background: rgba(56, 108, 255, 0.08);
+        }
+
+        .file-icon {
+            display: grid;
+            place-items: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: var(--icon-bg);
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .file-main {
+            display: grid;
+            min-width: 0;
+            gap: 4px;
+        }
+
+        .file-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .file-path {
+            overflow-wrap: anywhere;
+            color: var(--secondary);
+            font-size: 12px;
+            line-height: 1.3;
+        }
+
+        .file-meta {
+            display: grid;
+            gap: 4px;
+            justify-items: end;
+            color: var(--secondary);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .empty {
+            margin: 0;
+            padding: 20px;
+            color: var(--secondary);
+            font-size: 15px;
+        }
+
+        @media (max-width: 520px) {
+            body {
+                padding: 22px 12px 32px;
+            }
+
+            .file-row {
+                grid-template-columns: 40px minmax(0, 1fr);
+            }
+
+            .file-meta {
+                grid-column: 2;
+                grid-auto-flow: column;
+                justify-items: start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            <h1 data-i18n="title">文件清单</h1>
+            <p class="summary" data-i18n="summary">这个压缩包没有 HTML 文件，已使用文件清单打开。</p>
+            <p class="summary" id="archiveName"></p>
+        </header>
+        <section class="panel" id="fileList" aria-label="文件清单">
+            <p class="empty" data-i18n="loading">正在读取文件...</p>
+        </section>
+    </main>
+
+    <script>
+        (function() {
+            var copy = {
+                zh: {
+                    title: "文件清单",
+                    summary: "这个压缩包没有 HTML 文件，已使用文件清单打开。点击文件会交给浏览器默认方式处理。",
+                    loading: "正在读取文件...",
+                    empty: "没有可列出的文件。",
+                    failed: "无法读取文件清单。",
+                    image: "图片",
+                    video: "视频",
+                    audio: "音频",
+                    document: "文档",
+                    resource: "资源",
+                    file: "文件"
+                },
+                en: {
+                    title: "File List",
+                    summary: "This archive does not include an HTML file, so it opened as a file list. Tap a file to use the browser's default behavior.",
+                    loading: "Reading files...",
+                    empty: "No files to list.",
+                    failed: "Could not read the file list.",
+                    image: "Image",
+                    video: "Video",
+                    audio: "Audio",
+                    document: "Document",
+                    resource: "Resource",
+                    file: "File"
+                }
+            };
+            var lang = (navigator.language || "zh").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+            var text = copy[lang];
+            document.documentElement.lang = lang === "zh" ? "zh-Hans" : "en";
+            document.title = text.title;
+            document.querySelectorAll("[data-i18n]").forEach(function(node) {
+                node.textContent = text[node.getAttribute("data-i18n")] || node.textContent;
+            });
+
+            function fileName(path) {
+                var parts = String(path || "").split("/");
+                return parts[parts.length - 1] || path || text.file;
+            }
+
+            function extension(path) {
+                var name = fileName(path).toLowerCase();
+                var index = name.lastIndexOf(".");
+                return index >= 0 ? name.slice(index + 1) : "";
+            }
+
+            function kind(path) {
+                var ext = extension(path);
+                if (["png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "heic", "heif"].indexOf(ext) >= 0) return text.image;
+                if (["mp4", "mov", "m4v", "webm", "avi", "mkv"].indexOf(ext) >= 0) return text.video;
+                if (["mp3", "m4a", "wav", "aac", "ogg", "flac"].indexOf(ext) >= 0) return text.audio;
+                if (["pdf", "txt", "md", "json", "xml", "csv"].indexOf(ext) >= 0) return text.document;
+                if (["css", "js", "map", "wasm"].indexOf(ext) >= 0) return text.resource;
+                return text.file;
+            }
+
+            function badge(path) {
+                var label = kind(path);
+                if (label === text.image) return "IMG";
+                if (label === text.video) return "VID";
+                if (label === text.audio) return "AUD";
+                return "FILE";
+            }
+
+            function sizeLabel(byteCount) {
+                var count = Number(byteCount || 0);
+                if (!Number.isFinite(count) || count <= 0) return "0 KB";
+                var units = ["B", "KB", "MB", "GB"];
+                var unitIndex = 0;
+                while (count >= 1024 && unitIndex < units.length - 1) {
+                    count = count / 1024;
+                    unitIndex += 1;
+                }
+                var digits = unitIndex === 0 || count >= 10 ? 0 : 1;
+                return count.toFixed(digits) + " " + units[unitIndex];
+            }
+
+            function renderEmpty(message) {
+                var list = document.getElementById("fileList");
+                list.textContent = "";
+                var empty = document.createElement("p");
+                empty.className = "empty";
+                empty.textContent = message;
+                list.appendChild(empty);
+            }
+
+            function render(data) {
+                var archiveName = document.getElementById("archiveName");
+                archiveName.textContent = data.archiveName || "";
+                var files = Array.isArray(data.files) ? data.files : [];
+                if (files.length === 0) {
+                    renderEmpty(text.empty);
+                    return;
+                }
+
+                var list = document.getElementById("fileList");
+                list.textContent = "";
+                files.forEach(function(file) {
+                    var row = document.createElement("a");
+                    row.className = "file-row";
+                    row.href = file.href || "#";
+
+                    var icon = document.createElement("span");
+                    icon.className = "file-icon";
+                    icon.textContent = badge(file.relativePath);
+                    row.appendChild(icon);
+
+                    var main = document.createElement("span");
+                    main.className = "file-main";
+                    var name = document.createElement("span");
+                    name.className = "file-name";
+                    name.textContent = fileName(file.relativePath);
+                    var path = document.createElement("span");
+                    path.className = "file-path";
+                    path.textContent = file.relativePath || "";
+                    main.appendChild(name);
+                    main.appendChild(path);
+                    row.appendChild(main);
+
+                    var meta = document.createElement("span");
+                    meta.className = "file-meta";
+                    var type = document.createElement("span");
+                    type.textContent = kind(file.relativePath);
+                    var size = document.createElement("span");
+                    size.textContent = sizeLabel(file.byteCount);
+                    meta.appendChild(type);
+                    meta.appendChild(size);
+                    row.appendChild(meta);
+
+                    list.appendChild(row);
+                });
+            }
+
+            if (window.__HTMLKeepArchiveIndex) {
+                render(window.__HTMLKeepArchiveIndex);
+                return;
+            }
+
+            fetch(".htmlanywhere-file-index.json", { cache: "no-store" })
+                .then(function(response) {
+                    if (!response.ok) throw new Error("index");
+                    return response.json();
+                })
+                .then(render)
+                .catch(function() {
+                    renderEmpty(text.failed);
+                });
+        })();
+    </script>
+</body>
+</html>

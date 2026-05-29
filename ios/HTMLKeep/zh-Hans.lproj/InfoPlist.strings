@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "随手网页 社区版";
+"CFBundleName" = "随手网页 社区版";
+"CFBundleTypeName" = "HTML 文档";
+"NSLocalNetworkUsageDescription" = "随手网页只会在你开启 Agent 管理时使用本地网络，让电脑上的 Agent 管理这台设备里的网页。";

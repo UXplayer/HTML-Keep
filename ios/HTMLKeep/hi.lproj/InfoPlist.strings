@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "HTML Keep CE";
+"CFBundleName" = "HTML Keep CE";
+"CFBundleTypeName" = "HTML दस्तावेज़";
+"NSLocalNetworkUsageDescription" = "HTML Keep लोकल नेटवर्क का उपयोग केवल तब करता है जब आप Agent प्रबंधन शुरू करते हैं, ताकि आपके कंप्यूटर का Agent इस डिवाइस के पेज प्रबंधित कर सके।";

@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "HTML Keep CE";
+"CFBundleName" = "HTML Keep CE";
+"CFBundleTypeName" = "Documento HTML";
+"NSLocalNetworkUsageDescription" = "HTML Keep usa la red local solo cuando inicias la gestión de Agent, para que un Agent en tu ordenador pueda gestionar las páginas de este dispositivo.";

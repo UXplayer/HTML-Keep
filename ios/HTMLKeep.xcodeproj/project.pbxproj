@@ -1,0 +1,805 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		200000000000000000000101 /* App/HTMLKeepApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000201 /* App/HTMLKeepApp.swift */; };
+		200000000000000000000102 /* DesignSystem/AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000202 /* DesignSystem/AppTheme.swift */; };
+		200000000000000000000103 /* App/AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000203 /* App/AppRootView.swift */; };
+		200000000000000000000104 /* Features/FileImport/WebPageLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000204 /* Features/FileImport/WebPageLibrary.swift */; };
+		200000000000000000000105 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000205 /* Assets.xcassets */; };
+		200000000000000000000106 /* Features/Home/HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000208 /* Features/Home/HomeView.swift */; };
+		200000000000000000000107 /* Features/Viewer/HTMLViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000209 /* Features/Viewer/HTMLViewerView.swift */; };
+		200000000000000000000108 /* Features/Viewer/WebPageWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000210 /* Features/Viewer/WebPageWebView.swift */; };
+		200000000000000000000109 /* Features/Viewer/BackgroundColorExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000211 /* Features/Viewer/BackgroundColorExtractor.swift */; };
+		200000000000000000000110 /* Features/Sync/ICloudWebPageSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000212 /* Features/Sync/ICloudWebPageSyncService.swift */; };
+		200000000000000000000111 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000218 /* Localizable.strings */; };
+		200000000000000000000112 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000219 /* InfoPlist.strings */; };
+		200000000000000000000113 /* Features/FileImport/ZipArchiveExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000220 /* Features/FileImport/ZipArchiveExtractor.swift */; };
+		200000000000000000000114 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 200000000000000000000221 /* libz.tbd */; };
+		200000000000000000000115 /* Features/Viewer/WebPageRuntimeStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000222 /* Features/Viewer/WebPageRuntimeStorage.swift */; };
+		200000000000000000000116 /* Features/Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000223 /* Features/Settings/SettingsView.swift */; };
+		200000000000000000000117 /* Resources/Fonts/YeYa-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000224 /* Resources/Fonts/YeYa-Bold.ttf */; };
+		200000000000000000000118 /* App/AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000225 /* App/AppPreferences.swift */; };
+		200000000000000000000120 /* Resources/Fallback/FallbackArchiveIndex.html in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000255 /* Resources/Fallback/FallbackArchiveIndex.html */; };
+		200000000000000000000121 /* Features/Viewer/NativeFileViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000256 /* Features/Viewer/NativeFileViewerView.swift */; };
+		200000000000000000000122 /* Resources/EmptyState/bear-idle-sheet.png in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000257 /* Resources/EmptyState/bear-idle-sheet.png */; };
+		200000000000000000000123 /* App/AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000258 /* App/AppRouter.swift */; };
+		200000000000000000000124 /* App/SettingsSidebarPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000259 /* App/SettingsSidebarPresentation.swift */; };
+		200000000000000000000125 /* Features/Home/ProjectIconImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000260 /* Features/Home/ProjectIconImage.swift */; };
+		200000000000000000000126 /* Features/Home/HomeNavigationBarInstallers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000261 /* Features/Home/HomeNavigationBarInstallers.swift */; };
+		200000000000000000000127 /* Features/FileImport/WebPageSearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000262 /* Features/FileImport/WebPageSearchIndex.swift */; };
+		200000000000000000000128 /* Features/Home/HomeSearchOverlayPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000263 /* Features/Home/HomeSearchOverlayPresenter.swift */; };
+		200000000000000000000129 /* Features/Home/HomeSearchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000264 /* Features/Home/HomeSearchOverlayView.swift */; };
+		200000000000000000000130 /* Features/Home/HomeSearchScrollObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000265 /* Features/Home/HomeSearchScrollObserver.swift */; };
+		200000000000000000000131 /* App/AppBuildFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000266 /* App/AppBuildFlavor.swift */; };
+		200000000000000000000132 /* DesignSystem/SystemAlertTextFieldClearButtonInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000267 /* DesignSystem/SystemAlertTextFieldClearButtonInstaller.swift */; };
+		200000000000000000000133 /* Features/ProEntitlement/Models/ProEntitlementStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000268 /* Features/ProEntitlement/Models/ProEntitlementStore.swift */; };
+		200000000000000000000134 /* Features/ProEntitlement/Models/ProEntitlementMarketingFunnelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000269 /* Features/ProEntitlement/Models/ProEntitlementMarketingFunnelStore.swift */; };
+		200000000000000000000135 /* Features/ProEntitlement/Components/ProEntitlementSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000270 /* Features/ProEntitlement/Components/ProEntitlementSharedViews.swift */; };
+		200000000000000000000136 /* Features/ProEntitlement/Components/ProEntitlementPresentationCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000271 /* Features/ProEntitlement/Components/ProEntitlementPresentationCard.swift */; };
+		200000000000000000000137 /* Features/ProEntitlement/Components/ProEntitlementPromoSnackbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000272 /* Features/ProEntitlement/Components/ProEntitlementPromoSnackbar.swift */; };
+		200000000000000000000138 /* Features/ProEntitlement/Pages/ProEntitlementDestinationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000273 /* Features/ProEntitlement/Pages/ProEntitlementDestinationView.swift */; };
+		200000000000000000000139 /* Features/ProEntitlement/Pages/ProEntitlementStatusPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000274 /* Features/ProEntitlement/Pages/ProEntitlementStatusPage.swift */; };
+		200000000000000000000140 /* Features/ProEntitlement/Pages/ProEntitlementPaywallPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000275 /* Features/ProEntitlement/Pages/ProEntitlementPaywallPage.swift */; };
+		200000000000000000000141 /* Features/ProEntitlement/Pages/ProEntitlementDiscountOfferSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000276 /* Features/ProEntitlement/Pages/ProEntitlementDiscountOfferSheet.swift */; };
+		200000000000000000000143 /* Features/RuntimeConfig/CloudKitPublicRuntimeConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000278 /* Features/RuntimeConfig/CloudKitPublicRuntimeConfig.swift */; };
+		200000000000000000000144 /* Features/RuntimeConfig/AppReviewShield.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000279 /* Features/RuntimeConfig/AppReviewShield.swift */; };
+		200000000000000000000145 /* Features/RuntimeConfig/VersionUpdatePrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000280 /* Features/RuntimeConfig/VersionUpdatePrompt.swift */; };
+		200000000000000000000146 /* Features/ProEntitlement/Models/ProEntitlementModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000282 /* Features/ProEntitlement/Models/ProEntitlementModels.swift */; };
+		200000000000000000000147 /* Features/DebugTools/DebugToolsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000283 /* Features/DebugTools/DebugToolsPage.swift */; };
+		200000000000000000000148 /* Features/AgentImport/AgentImportSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000284 /* Features/AgentImport/AgentImportSession.swift */; };
+		300000000000000000000001 /* SideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 300000000000000000000002 /* SideMenu */; };
+		400000000000000000000101 /* ProjectWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000201 /* ProjectWidget.swift */; };
+		400000000000000000000102 /* Shared/ProjectWidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000202 /* Shared/ProjectWidgetShared.swift */; };
+		400000000000000000000103 /* Shared/ProjectWidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000202 /* Shared/ProjectWidgetShared.swift */; };
+		400000000000000000000104 /* HTMLKeepWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 400000000000000000000203 /* HTMLKeepWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		400000000000000000000105 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000218 /* Localizable.strings */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		400000000000000000000801 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 200000000000000000000801 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 400000000000000000000501;
+			remoteInfo = HTMLKeepWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		400000000000000000000701 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				400000000000000000000104 /* HTMLKeepWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000201 /* App/HTMLKeepApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/HTMLKeepApp.swift; sourceTree = "<group>"; };
+		200000000000000000000202 /* DesignSystem/AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem/AppTheme.swift; sourceTree = "<group>"; };
+		200000000000000000000203 /* App/AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppRootView.swift; sourceTree = "<group>"; };
+		200000000000000000000204 /* Features/FileImport/WebPageLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/FileImport/WebPageLibrary.swift; sourceTree = "<group>"; };
+		200000000000000000000205 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		200000000000000000000206 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		200000000000000000000207 /* HTMLKeep-Debug.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "HTMLKeep-Debug.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000208 /* Features/Home/HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeView.swift; sourceTree = "<group>"; };
+		200000000000000000000209 /* Features/Viewer/HTMLViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/HTMLViewerView.swift; sourceTree = "<group>"; };
+		200000000000000000000210 /* Features/Viewer/WebPageWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/WebPageWebView.swift; sourceTree = "<group>"; };
+		200000000000000000000211 /* Features/Viewer/BackgroundColorExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/BackgroundColorExtractor.swift; sourceTree = "<group>"; };
+		200000000000000000000212 /* Features/Sync/ICloudWebPageSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Sync/ICloudWebPageSyncService.swift; sourceTree = "<group>"; };
+		200000000000000000000213 /* HTMLKeep.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HTMLKeep.entitlements; sourceTree = "<group>"; };
+		200000000000000000000214 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		200000000000000000000215 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000216 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		200000000000000000000217 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000220 /* Features/FileImport/ZipArchiveExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/FileImport/ZipArchiveExtractor.swift; sourceTree = "<group>"; };
+		200000000000000000000221 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		200000000000000000000222 /* Features/Viewer/WebPageRuntimeStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/WebPageRuntimeStorage.swift; sourceTree = "<group>"; };
+		200000000000000000000223 /* Features/Settings/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Settings/SettingsView.swift; sourceTree = "<group>"; };
+		200000000000000000000224 /* Resources/Fonts/YeYa-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Resources/Fonts/YeYa-Bold.ttf"; sourceTree = "<group>"; };
+		200000000000000000000225 /* App/AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppPreferences.swift; sourceTree = "<group>"; };
+		200000000000000000000226 /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000227 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000228 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000229 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000230 /* bn */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = bn; path = bn.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000231 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000232 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		200000000000000000000233 /* ur */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ur; path = ur.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000234 /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000235 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000236 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000237 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000238 /* bn */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = bn; path = bn.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000239 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000240 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		200000000000000000000241 /* ur */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ur; path = ur.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000242 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000243 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000244 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000245 /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000246 /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
+		200000000000000000000247 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		200000000000000000000248 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000249 /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000250 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000251 /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000252 /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		200000000000000000000253 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		200000000000000000000255 /* Resources/Fallback/FallbackArchiveIndex.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = Resources/Fallback/FallbackArchiveIndex.html; sourceTree = "<group>"; };
+		200000000000000000000256 /* Features/Viewer/NativeFileViewerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/NativeFileViewerView.swift; sourceTree = "<group>"; };
+		200000000000000000000257 /* Resources/EmptyState/bear-idle-sheet.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Resources/EmptyState/bear-idle-sheet.png"; sourceTree = "<group>"; };
+		200000000000000000000258 /* App/AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppRouter.swift; sourceTree = "<group>"; };
+		200000000000000000000259 /* App/SettingsSidebarPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/SettingsSidebarPresentation.swift; sourceTree = "<group>"; };
+		200000000000000000000260 /* Features/Home/ProjectIconImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/ProjectIconImage.swift; sourceTree = "<group>"; };
+		200000000000000000000261 /* Features/Home/HomeNavigationBarInstallers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeNavigationBarInstallers.swift; sourceTree = "<group>"; };
+		200000000000000000000262 /* Features/FileImport/WebPageSearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/FileImport/WebPageSearchIndex.swift; sourceTree = "<group>"; };
+		200000000000000000000263 /* Features/Home/HomeSearchOverlayPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeSearchOverlayPresenter.swift; sourceTree = "<group>"; };
+		200000000000000000000264 /* Features/Home/HomeSearchOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeSearchOverlayView.swift; sourceTree = "<group>"; };
+		200000000000000000000265 /* Features/Home/HomeSearchScrollObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Home/HomeSearchScrollObserver.swift; sourceTree = "<group>"; };
+		200000000000000000000266 /* App/AppBuildFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppBuildFlavor.swift; sourceTree = "<group>"; };
+		200000000000000000000267 /* DesignSystem/SystemAlertTextFieldClearButtonInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem/SystemAlertTextFieldClearButtonInstaller.swift; sourceTree = "<group>"; };
+		200000000000000000000268 /* Features/ProEntitlement/Models/ProEntitlementStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Models/ProEntitlementStore.swift; sourceTree = "<group>"; };
+		200000000000000000000269 /* Features/ProEntitlement/Models/ProEntitlementMarketingFunnelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Models/ProEntitlementMarketingFunnelStore.swift; sourceTree = "<group>"; };
+		200000000000000000000270 /* Features/ProEntitlement/Components/ProEntitlementSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Components/ProEntitlementSharedViews.swift; sourceTree = "<group>"; };
+		200000000000000000000271 /* Features/ProEntitlement/Components/ProEntitlementPresentationCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Components/ProEntitlementPresentationCard.swift; sourceTree = "<group>"; };
+		200000000000000000000272 /* Features/ProEntitlement/Components/ProEntitlementPromoSnackbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Components/ProEntitlementPromoSnackbar.swift; sourceTree = "<group>"; };
+		200000000000000000000273 /* Features/ProEntitlement/Pages/ProEntitlementDestinationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Pages/ProEntitlementDestinationView.swift; sourceTree = "<group>"; };
+		200000000000000000000274 /* Features/ProEntitlement/Pages/ProEntitlementStatusPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Pages/ProEntitlementStatusPage.swift; sourceTree = "<group>"; };
+		200000000000000000000275 /* Features/ProEntitlement/Pages/ProEntitlementPaywallPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Pages/ProEntitlementPaywallPage.swift; sourceTree = "<group>"; };
+		200000000000000000000276 /* Features/ProEntitlement/Pages/ProEntitlementDiscountOfferSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Pages/ProEntitlementDiscountOfferSheet.swift; sourceTree = "<group>"; };
+		200000000000000000000278 /* Features/RuntimeConfig/CloudKitPublicRuntimeConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/RuntimeConfig/CloudKitPublicRuntimeConfig.swift; sourceTree = "<group>"; };
+		200000000000000000000279 /* Features/RuntimeConfig/AppReviewShield.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/RuntimeConfig/AppReviewShield.swift; sourceTree = "<group>"; };
+		200000000000000000000280 /* Features/RuntimeConfig/VersionUpdatePrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/RuntimeConfig/VersionUpdatePrompt.swift; sourceTree = "<group>"; };
+		200000000000000000000282 /* Features/ProEntitlement/Models/ProEntitlementModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Models/ProEntitlementModels.swift; sourceTree = "<group>"; };
+		200000000000000000000283 /* Features/DebugTools/DebugToolsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/DebugTools/DebugToolsPage.swift; sourceTree = "<group>"; };
+		200000000000000000000284 /* Features/AgentImport/AgentImportSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/AgentImport/AgentImportSession.swift; sourceTree = "<group>"; };
+		400000000000000000000201 /* ProjectWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectWidget.swift; sourceTree = "<group>"; };
+		400000000000000000000202 /* Shared/ProjectWidgetShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/ProjectWidgetShared.swift; sourceTree = "<group>"; };
+		400000000000000000000203 /* HTMLKeepWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HTMLKeepWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		400000000000000000000204 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		400000000000000000000205 /* HTMLKeepWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HTMLKeepWidget.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		200000000000000000000301 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200000000000000000000114 /* libz.tbd in Frameworks */,
+				300000000000000000000001 /* SideMenu in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		400000000000000000000301 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		200000000000000000000401 = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000402 /* HTMLKeep */,
+				400000000000000000000402 /* HTMLKeepWidget */,
+				200000000000000000000403 /* Products */,
+				200000000000000000000221 /* libz.tbd */,
+			);
+			sourceTree = "<group>";
+		};
+		200000000000000000000402 /* HTMLKeep */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000201 /* App/HTMLKeepApp.swift */,
+				200000000000000000000225 /* App/AppPreferences.swift */,
+				200000000000000000000266 /* App/AppBuildFlavor.swift */,
+				200000000000000000000202 /* DesignSystem/AppTheme.swift */,
+				200000000000000000000267 /* DesignSystem/SystemAlertTextFieldClearButtonInstaller.swift */,
+				200000000000000000000203 /* App/AppRootView.swift */,
+				200000000000000000000258 /* App/AppRouter.swift */,
+				200000000000000000000259 /* App/SettingsSidebarPresentation.swift */,
+				200000000000000000000204 /* Features/FileImport/WebPageLibrary.swift */,
+				200000000000000000000262 /* Features/FileImport/WebPageSearchIndex.swift */,
+				200000000000000000000220 /* Features/FileImport/ZipArchiveExtractor.swift */,
+				200000000000000000000208 /* Features/Home/HomeView.swift */,
+				200000000000000000000263 /* Features/Home/HomeSearchOverlayPresenter.swift */,
+				200000000000000000000264 /* Features/Home/HomeSearchOverlayView.swift */,
+				200000000000000000000265 /* Features/Home/HomeSearchScrollObserver.swift */,
+				200000000000000000000260 /* Features/Home/ProjectIconImage.swift */,
+				200000000000000000000261 /* Features/Home/HomeNavigationBarInstallers.swift */,
+				200000000000000000000282 /* Features/ProEntitlement/Models/ProEntitlementModels.swift */,
+				200000000000000000000268 /* Features/ProEntitlement/Models/ProEntitlementStore.swift */,
+				200000000000000000000269 /* Features/ProEntitlement/Models/ProEntitlementMarketingFunnelStore.swift */,
+				200000000000000000000270 /* Features/ProEntitlement/Components/ProEntitlementSharedViews.swift */,
+				200000000000000000000271 /* Features/ProEntitlement/Components/ProEntitlementPresentationCard.swift */,
+				200000000000000000000272 /* Features/ProEntitlement/Components/ProEntitlementPromoSnackbar.swift */,
+				200000000000000000000273 /* Features/ProEntitlement/Pages/ProEntitlementDestinationView.swift */,
+				200000000000000000000274 /* Features/ProEntitlement/Pages/ProEntitlementStatusPage.swift */,
+				200000000000000000000275 /* Features/ProEntitlement/Pages/ProEntitlementPaywallPage.swift */,
+				200000000000000000000276 /* Features/ProEntitlement/Pages/ProEntitlementDiscountOfferSheet.swift */,
+				200000000000000000000278 /* Features/RuntimeConfig/CloudKitPublicRuntimeConfig.swift */,
+				200000000000000000000279 /* Features/RuntimeConfig/AppReviewShield.swift */,
+				200000000000000000000280 /* Features/RuntimeConfig/VersionUpdatePrompt.swift */,
+				200000000000000000000283 /* Features/DebugTools/DebugToolsPage.swift */,
+				200000000000000000000284 /* Features/AgentImport/AgentImportSession.swift */,
+				200000000000000000000209 /* Features/Viewer/HTMLViewerView.swift */,
+				200000000000000000000256 /* Features/Viewer/NativeFileViewerView.swift */,
+				200000000000000000000210 /* Features/Viewer/WebPageWebView.swift */,
+				200000000000000000000222 /* Features/Viewer/WebPageRuntimeStorage.swift */,
+				200000000000000000000211 /* Features/Viewer/BackgroundColorExtractor.swift */,
+				200000000000000000000212 /* Features/Sync/ICloudWebPageSyncService.swift */,
+				200000000000000000000223 /* Features/Settings/SettingsView.swift */,
+				400000000000000000000202 /* Shared/ProjectWidgetShared.swift */,
+				200000000000000000000205 /* Assets.xcassets */,
+				200000000000000000000218 /* Localizable.strings */,
+				200000000000000000000219 /* InfoPlist.strings */,
+				200000000000000000000224 /* Resources/Fonts/YeYa-Bold.ttf */,
+				200000000000000000000257 /* Resources/EmptyState/bear-idle-sheet.png */,
+				200000000000000000000255 /* Resources/Fallback/FallbackArchiveIndex.html */,
+				200000000000000000000206 /* Info.plist */,
+				200000000000000000000213 /* HTMLKeep.entitlements */,
+			);
+			path = HTMLKeep;
+			sourceTree = "<group>";
+		};
+		200000000000000000000403 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000207 /* HTMLKeep-Debug.app */,
+				400000000000000000000203 /* HTMLKeepWidget.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		400000000000000000000402 /* HTMLKeepWidget */ = {
+			isa = PBXGroup;
+			children = (
+				400000000000000000000201 /* ProjectWidget.swift */,
+				400000000000000000000204 /* Info.plist */,
+				400000000000000000000205 /* HTMLKeepWidget.entitlements */,
+			);
+			path = HTMLKeepWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		200000000000000000000501 /* HTMLKeep */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 200000000000000000000901 /* Build configuration list for PBXNativeTarget "HTMLKeep" */;
+			buildPhases = (
+				200000000000000000000601 /* Sources */,
+				200000000000000000000301 /* Frameworks */,
+				200000000000000000000701 /* Resources */,
+				400000000000000000000701 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				400000000000000000000802 /* PBXTargetDependency */,
+			);
+			name = HTMLKeep;
+			packageProductDependencies = (
+				300000000000000000000002 /* SideMenu */,
+			);
+			productName = HTMLKeep;
+			productReference = 200000000000000000000207 /* HTMLKeep-Debug.app */;
+			productType = "com.apple.product-type.application";
+		};
+		400000000000000000000501 /* HTMLKeepWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 400000000000000000000901 /* Build configuration list for PBXNativeTarget "HTMLKeepWidget" */;
+			buildPhases = (
+				400000000000000000000601 /* Sources */,
+				400000000000000000000301 /* Frameworks */,
+				400000000000000000000602 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HTMLKeepWidget;
+			packageProductDependencies = (
+			);
+			productName = HTMLKeepWidget;
+			productReference = 400000000000000000000203 /* HTMLKeepWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		200000000000000000000801 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					200000000000000000000501 = {
+						CreatedOnToolsVersion = 26.3;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+							com.apple.iCloud = {
+								enabled = 1;
+							};
+						};
+					};
+					400000000000000000000501 = {
+						CreatedOnToolsVersion = 26.3;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
+					};
+				};
+			};
+			buildConfigurationList = 200000000000000000000902 /* Build configuration list for PBXProject "HTMLKeep" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = "zh-Hans";
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				"zh-Hans",
+				en,
+				hi,
+				es,
+				fr,
+				ar,
+				bn,
+				ru,
+				"pt-BR",
+				ur,
+				ja,
+				de,
+				ko,
+				it,
+				nl,
+				"zh-Hant",
+				Base,
+			);
+			mainGroup = 200000000000000000000401;
+			packageReferences = (
+				300000000000000000000003 /* XCRemoteSwiftPackageReference "SideMenu" */,
+			);
+			productRefGroup = 200000000000000000000403 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				200000000000000000000501 /* HTMLKeep */,
+				400000000000000000000501 /* HTMLKeepWidget */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		200000000000000000000701 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200000000000000000000105 /* Assets.xcassets in Resources */,
+				200000000000000000000111 /* Localizable.strings in Resources */,
+				200000000000000000000117 /* Resources/Fonts/YeYa-Bold.ttf in Resources */,
+				200000000000000000000122 /* Resources/EmptyState/bear-idle-sheet.png in Resources */,
+				200000000000000000000120 /* Resources/Fallback/FallbackArchiveIndex.html in Resources */,
+				200000000000000000000112 /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		400000000000000000000602 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				400000000000000000000105 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		200000000000000000000601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				200000000000000000000101 /* App/HTMLKeepApp.swift in Sources */,
+				200000000000000000000102 /* DesignSystem/AppTheme.swift in Sources */,
+				200000000000000000000132 /* DesignSystem/SystemAlertTextFieldClearButtonInstaller.swift in Sources */,
+				200000000000000000000103 /* App/AppRootView.swift in Sources */,
+				200000000000000000000123 /* App/AppRouter.swift in Sources */,
+				200000000000000000000124 /* App/SettingsSidebarPresentation.swift in Sources */,
+				200000000000000000000131 /* App/AppBuildFlavor.swift in Sources */,
+				400000000000000000000103 /* Shared/ProjectWidgetShared.swift in Sources */,
+				200000000000000000000104 /* Features/FileImport/WebPageLibrary.swift in Sources */,
+				200000000000000000000127 /* Features/FileImport/WebPageSearchIndex.swift in Sources */,
+				200000000000000000000113 /* Features/FileImport/ZipArchiveExtractor.swift in Sources */,
+				200000000000000000000106 /* Features/Home/HomeView.swift in Sources */,
+				200000000000000000000128 /* Features/Home/HomeSearchOverlayPresenter.swift in Sources */,
+				200000000000000000000129 /* Features/Home/HomeSearchOverlayView.swift in Sources */,
+				200000000000000000000130 /* Features/Home/HomeSearchScrollObserver.swift in Sources */,
+				200000000000000000000125 /* Features/Home/ProjectIconImage.swift in Sources */,
+				200000000000000000000126 /* Features/Home/HomeNavigationBarInstallers.swift in Sources */,
+				200000000000000000000146 /* Features/ProEntitlement/Models/ProEntitlementModels.swift in Sources */,
+				200000000000000000000133 /* Features/ProEntitlement/Models/ProEntitlementStore.swift in Sources */,
+				200000000000000000000134 /* Features/ProEntitlement/Models/ProEntitlementMarketingFunnelStore.swift in Sources */,
+				200000000000000000000135 /* Features/ProEntitlement/Components/ProEntitlementSharedViews.swift in Sources */,
+				200000000000000000000136 /* Features/ProEntitlement/Components/ProEntitlementPresentationCard.swift in Sources */,
+				200000000000000000000137 /* Features/ProEntitlement/Components/ProEntitlementPromoSnackbar.swift in Sources */,
+				200000000000000000000138 /* Features/ProEntitlement/Pages/ProEntitlementDestinationView.swift in Sources */,
+				200000000000000000000139 /* Features/ProEntitlement/Pages/ProEntitlementStatusPage.swift in Sources */,
+				200000000000000000000140 /* Features/ProEntitlement/Pages/ProEntitlementPaywallPage.swift in Sources */,
+				200000000000000000000141 /* Features/ProEntitlement/Pages/ProEntitlementDiscountOfferSheet.swift in Sources */,
+				200000000000000000000143 /* Features/RuntimeConfig/CloudKitPublicRuntimeConfig.swift in Sources */,
+				200000000000000000000144 /* Features/RuntimeConfig/AppReviewShield.swift in Sources */,
+				200000000000000000000145 /* Features/RuntimeConfig/VersionUpdatePrompt.swift in Sources */,
+				200000000000000000000147 /* Features/DebugTools/DebugToolsPage.swift in Sources */,
+				200000000000000000000148 /* Features/AgentImport/AgentImportSession.swift in Sources */,
+				200000000000000000000107 /* Features/Viewer/HTMLViewerView.swift in Sources */,
+				200000000000000000000121 /* Features/Viewer/NativeFileViewerView.swift in Sources */,
+				200000000000000000000108 /* Features/Viewer/WebPageWebView.swift in Sources */,
+				200000000000000000000115 /* Features/Viewer/WebPageRuntimeStorage.swift in Sources */,
+				200000000000000000000109 /* Features/Viewer/BackgroundColorExtractor.swift in Sources */,
+				200000000000000000000110 /* Features/Sync/ICloudWebPageSyncService.swift in Sources */,
+				200000000000000000000116 /* Features/Settings/SettingsView.swift in Sources */,
+				200000000000000000000118 /* App/AppPreferences.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		400000000000000000000601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				400000000000000000000101 /* ProjectWidget.swift in Sources */,
+				400000000000000000000102 /* Shared/ProjectWidgetShared.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		400000000000000000000802 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 400000000000000000000501 /* HTMLKeepWidget */;
+			targetProxy = 400000000000000000000801 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		200000000000000000000218 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				200000000000000000000214 /* zh-Hans */,
+				200000000000000000000215 /* en */,
+				200000000000000000000226 /* hi */,
+				200000000000000000000227 /* es */,
+				200000000000000000000228 /* fr */,
+				200000000000000000000229 /* ar */,
+				200000000000000000000230 /* bn */,
+				200000000000000000000231 /* ru */,
+				200000000000000000000232 /* pt-BR */,
+				200000000000000000000233 /* ur */,
+				200000000000000000000242 /* ja */,
+				200000000000000000000243 /* de */,
+				200000000000000000000244 /* ko */,
+				200000000000000000000245 /* it */,
+				200000000000000000000246 /* nl */,
+				200000000000000000000247 /* zh-Hant */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		200000000000000000000219 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				200000000000000000000216 /* zh-Hans */,
+				200000000000000000000217 /* en */,
+				200000000000000000000234 /* hi */,
+				200000000000000000000235 /* es */,
+				200000000000000000000236 /* fr */,
+				200000000000000000000237 /* ar */,
+				200000000000000000000238 /* bn */,
+				200000000000000000000239 /* ru */,
+				200000000000000000000240 /* pt-BR */,
+				200000000000000000000241 /* ur */,
+				200000000000000000000248 /* ja */,
+				200000000000000000000249 /* de */,
+				200000000000000000000250 /* ko */,
+				200000000000000000000251 /* it */,
+				200000000000000000000252 /* nl */,
+				200000000000000000000253 /* zh-Hant */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		200000000000000000000A01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG HTMLKEEP_COMMUNITY $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		200000000000000000000A02 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "HTMLKEEP_COMMUNITY $(inherited)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		200000000000000000000A03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLOUDKIT_CONTAINER_ENVIRONMENT = Development;
+				CODE_SIGN_ENTITLEMENTS = HTMLKeep/HTMLKeep.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = 64576HTQA3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HTMLKeep/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "HTML Keep CE";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.htmlkeep.community.debug;
+				PRODUCT_NAME = "HTMLKeep-Debug";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		200000000000000000000A04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLOUDKIT_CONTAINER_ENVIRONMENT = Production;
+				CODE_SIGN_ENTITLEMENTS = HTMLKeep/HTMLKeep.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = 64576HTQA3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HTMLKeep/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "HTML Keep CE";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.htmlkeep.community;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		400000000000000000000A03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = HTMLKeepWidget/HTMLKeepWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = 64576HTQA3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HTMLKeepWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.htmlkeep.community.debug.ProjectWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		400000000000000000000A04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = HTMLKeepWidget/HTMLKeepWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 13;
+				DEVELOPMENT_TEAM = 64576HTQA3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HTMLKeepWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.htmlkeep.community.ProjectWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		200000000000000000000901 /* Build configuration list for PBXNativeTarget "HTMLKeep" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				200000000000000000000A03 /* Debug */,
+				200000000000000000000A04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		200000000000000000000902 /* Build configuration list for PBXProject "HTMLKeep" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				200000000000000000000A01 /* Debug */,
+				200000000000000000000A02 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		400000000000000000000901 /* Build configuration list for PBXNativeTarget "HTMLKeepWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				400000000000000000000A03 /* Debug */,
+				400000000000000000000A04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		300000000000000000000003 /* XCRemoteSwiftPackageReference "SideMenu" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jonkykong/SideMenu.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		300000000000000000000002 /* SideMenu */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 300000000000000000000003 /* XCRemoteSwiftPackageReference "SideMenu" */;
+			productName = SideMenu;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 200000000000000000000801 /* Project object */;
+}

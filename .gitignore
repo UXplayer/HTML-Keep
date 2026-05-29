@@ -1,0 +1,12 @@
+.DS_Store
+.htmlkeep-community-repository
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties

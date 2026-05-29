@@ -1,0 +1,4 @@
+"CFBundleDisplayName" = "HTML Keep CE";
+"CFBundleName" = "HTML Keep CE";
+"CFBundleTypeName" = "مستند HTML";
+"NSLocalNetworkUsageDescription" = "يستخدم HTML Keep الشبكة المحلية فقط عند بدء إدارة Agent، حتى يتمكن Agent على الكمبيوتر من إدارة الصفحات على هذا الجهاز.";

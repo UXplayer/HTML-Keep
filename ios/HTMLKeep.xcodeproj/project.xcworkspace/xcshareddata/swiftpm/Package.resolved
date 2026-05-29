@@ -1,0 +1,15 @@
+{
+  "originHash" : "3f0ee15808ebe52cba2c33b3d985cd5544a2cad4a4840ec58429f948211ba8e5",
+  "pins" : [
+    {
+      "identity" : "sidemenu",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jonkykong/SideMenu.git",
+      "state" : {
+        "revision" : "8bd4fd128923cf5494fa726839af8afe12908ad9",
+        "version" : "6.5.0"
+      }
+    }
+  ],
+  "version" : 3
+}
