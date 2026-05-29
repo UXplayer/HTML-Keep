@@ -1381,11 +1381,19 @@ private struct AppRuntimePresentationModifier: ViewModifier {
                     }
             }
             .fullScreenCover(item: $proEntitlementDestination) { destination in
+                #if HTMLKEEP_COMMUNITY
                 ProEntitlementDestinationView(
                     destination: destination
                 )
                 .environmentObject(proEntitlementStore)
                 .environmentObject(proEntitlementMarketingFunnelStore)
+                #else
+                MembershipDestinationView(
+                    destination: MembershipDestination(destination)
+                )
+                .environmentObject(proEntitlementStore)
+                .environmentObject(proEntitlementMarketingFunnelStore)
+                #endif
             }
             .background(
                 VersionUpdatePromptRuntimeHost(store: versionUpdatePromptStore)
