@@ -107,7 +107,7 @@ struct SettingsView: View {
                 .listRowBackground(Color.clear)
                 #else
                 MembershipEntryCard(
-                    entryPresentation: subscriptionStore.settingsEntryPresentation,
+                    entryPresentation: subscriptionStore.entryPresentation,
                     onOpen: onOpenProEntitlement
                 )
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))

@@ -204,19 +204,37 @@ struct AppRootView: View {
             if shouldShowProEntitlementPromoSnackbar {
                 VStack {
                     Spacer()
-                    ProEntitlementPromoSnackbar(
-                        discountText: proEntitlementStore.discountSnackbarDiscountText,
-                        fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
-                        compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
-                        fallbackText: proEntitlementStore.discountSnackbarFallbackText,
-                        remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText,
-                        action: {
-                            presentProEntitlement()
-                        },
-                        closeAction: {
-                            proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
-                        }
-                    )
+                    Group {
+                    #if HTMLKEEP_COMMUNITY
+                        ProEntitlementPromoSnackbar(
+                            discountText: proEntitlementStore.discountSnackbarDiscountText,
+                            fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
+                            compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
+                            fallbackText: proEntitlementStore.discountSnackbarFallbackText,
+                            remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText,
+                            action: {
+                                presentProEntitlement()
+                            },
+                            closeAction: {
+                                proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
+                            }
+                        )
+                    #else
+                        HomePromoSnackbar(
+                            discountText: proEntitlementStore.discountSnackbarDiscountText,
+                            fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
+                            compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
+                            fallbackText: proEntitlementStore.discountSnackbarFallbackText,
+                            remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText,
+                            action: {
+                                presentProEntitlement()
+                            },
+                            closeAction: {
+                                proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
+                            }
+                        )
+                    #endif
+                    }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 106)
                 }
@@ -1373,12 +1391,21 @@ private struct AppRuntimePresentationModifier: ViewModifier {
             .sheet(item: $discountOfferPresentation, onDismiss: {
                 proEntitlementMarketingFunnelStore.dismissDiscountSheet()
             }) { _ in
+                #if HTMLKEEP_COMMUNITY
                 ProEntitlementDiscountOfferSheet()
                     .environmentObject(proEntitlementStore)
                     .environmentObject(proEntitlementMarketingFunnelStore)
                     .onAppear {
                         proEntitlementMarketingFunnelStore.noteDiscountSheetPresented()
                     }
+                #else
+                DiscountOfferSheet()
+                    .environmentObject(proEntitlementStore)
+                    .environmentObject(proEntitlementMarketingFunnelStore)
+                    .onAppear {
+                        proEntitlementMarketingFunnelStore.noteDiscountSheetPresented()
+                    }
+                #endif
             }
             .fullScreenCover(item: $proEntitlementDestination) { destination in
                 #if HTMLKEEP_COMMUNITY
@@ -1731,7 +1758,11 @@ private struct SettingsProEntitlementSheet: View {
 
     var body: some View {
         NavigationStack {
+            #if HTMLKEEP_COMMUNITY
             ProEntitlementDestinationView(destination: destination)
+            #else
+            MembershipDestinationView(destination: MembershipDestination(destination))
+            #endif
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .presentationDetents([.large])
