@@ -196,24 +196,24 @@ enum ProEntitlementProductKind: String, CaseIterable, Identifiable {
     var storeKitName: String {
         switch self {
         case .yearly:
-            return AppStrings.localized("年度 Pro")
+            return AppStrings.localized("年度会员")
         case .monthly:
-            return AppStrings.localized("月度 Pro")
+            return AppStrings.localized("月度会员")
         case .lifetime:
-            return AppStrings.localized("永久 Pro")
+            return AppStrings.localized("永久会员")
         case .lifetimePromo:
-            return AppStrings.localized("限时永久 Pro")
+            return AppStrings.localized("限时永久会员")
         }
     }
 
     var proEntitlementDisplayName: String {
         switch self {
         case .yearly:
-            return AppStrings.localized("年度 Pro")
+            return AppStrings.localized("年度会员")
         case .monthly:
-            return AppStrings.localized("月度 Pro")
+            return AppStrings.localized("月度会员")
         case .lifetime, .lifetimePromo:
-            return AppStrings.localized("永久 Pro")
+            return AppStrings.localized("永久会员")
         }
     }
 

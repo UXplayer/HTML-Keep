@@ -38,6 +38,9 @@ struct SettingsView: View {
     @AppStorage(AppPreferenceKeys.iCloudSyncEnabled) private var isICloudSyncEnabled = true
     @AppStorage(AppPreferenceKeys.expertModeEnabled) private var isExpertModeEnabled = AppBuildFlavor.current.defaultIsExpertModeEnabled
     @EnvironmentObject private var proEntitlementStore: ProEntitlementStore
+    #if !HTMLKEEP_COMMUNITY
+    @EnvironmentObject private var subscriptionStore: SubscriptionStore
+    #endif
     @State private var isShowingShareSheet = false
     @State private var iCloudSyncFeedbackStartedAt: Date?
     @State private var iCloudSyncFeedbackResetAt: Date?
@@ -96,22 +99,20 @@ struct SettingsView: View {
     private var settingsList: some View {
         List {
             Section {
-                if AppDistribution.current.showsOfficialProEntitlementUI {
-                    Button(action: onOpenProEntitlement) {
-                        ProEntitlementPresentationCard(
-                            presentation: proEntitlementStore.presentation
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                    .listRowBackground(Color.clear)
-                } else {
-                    ProEntitlementPresentationCard(
-                        presentation: proEntitlementStore.presentation
-                    )
-                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                    .listRowBackground(Color.clear)
-                }
+                #if HTMLKEEP_COMMUNITY
+                ProEntitlementPresentationCard(
+                    presentation: proEntitlementStore.presentation
+                )
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                .listRowBackground(Color.clear)
+                #else
+                MembershipEntryCard(
+                    entryPresentation: subscriptionStore.entryPresentation,
+                    onOpen: onOpenProEntitlement
+                )
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                .listRowBackground(Color.clear)
+                #endif
             }
 
             Section {
