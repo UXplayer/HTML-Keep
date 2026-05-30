@@ -340,13 +340,13 @@ struct AppRootView: View {
         proEntitlementMarketingFunnelStore.updateAppReviewShield(isEnabled: appReviewShieldStore.isEnabled)
         refreshProjectWidgetEntitlementSnapshot(reloadsTimelines: false)
         if scenePhase == .background {
-            agentImportSession.stop()
+            agentImportSession.stop(reason: .appLifecycle)
         }
     }
 
     private func handleScenePhaseChange(_ phase: ScenePhase) {
         if phase == .background {
-            agentImportSession.stop()
+            agentImportSession.stop(reason: .appLifecycle)
             return
         }
         guard phase == .active else { return }
@@ -1024,6 +1024,7 @@ struct AppRootView: View {
     private func startAgentImportSessionIfGuideCompleted() {
         guard proEntitlementStore.canUseAgentAutomation,
               hasCompletedAgentImportGuide,
+              scenePhase == .active,
               agentImportSession.status == .stopped || agentImportSession.status == .failed else {
             return
         }

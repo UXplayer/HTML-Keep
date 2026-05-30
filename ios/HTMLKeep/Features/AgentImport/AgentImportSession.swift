@@ -301,6 +301,14 @@ enum AgentImportSessionStatus: String {
     }
 }
 
+enum AgentImportSessionStopReason: Equatable {
+    case userInitiated
+    case appLifecycle
+    case remoteShutdown
+    case serverUnavailable
+    case restart
+}
+
 struct AgentImportSessionEvent: Identifiable, Hashable {
     let id = UUID()
     let createdAt: Date
@@ -315,6 +323,7 @@ final class AgentImportSessionController {
     private(set) var urlString: String?
     private(set) var latestErrorMessage: String?
     private(set) var events: [AgentImportSessionEvent] = []
+    private(set) var requiresManualRestart = false
 
     private var server: AgentImportHTTPServer?
     private var idleTimerDisabledForSession = false
@@ -328,7 +337,8 @@ final class AgentImportSessionController {
         onImport: @escaping @MainActor (WebPageImportResult) -> Void,
         onLibraryChanged: @escaping @MainActor (String) -> Void
     ) {
-        stop()
+        stop(reason: .restart)
+        requiresManualRestart = false
         status = .starting
         latestErrorMessage = nil
 
@@ -350,6 +360,13 @@ final class AgentImportSessionController {
                     onImport: onImport,
                     onLibraryChanged: onLibraryChanged
                 )
+            }
+        }
+        candidate.onStop = { [weak self, weak candidate] in
+            guard let candidate else { return }
+            Task { @MainActor [weak self, weak candidate] in
+                guard let candidate else { return }
+                self?.handleServerDidStop(candidate)
             }
         }
 
@@ -378,18 +395,30 @@ final class AgentImportSessionController {
         )
     }
 
-    func stop() {
-        server?.stop()
+    func stop(reason: AgentImportSessionStopReason = .userInitiated) {
+        let previousStatus = status
+        let activeServer = server
         server = nil
+        activeServer?.stop()
         setIdleTimerDisabledForSession(false)
         urlString = nil
-        if status == .running || status == .starting {
+
+        if reason != .restart {
+            requiresManualRestart = true
+        }
+
+        if previousStatus == .running || previousStatus == .starting {
             status = .stopped
             appendEvent(
                 title: AppStrings.localized("Agent 管理已关闭"),
                 detail: AppStrings.localized("局域网会话已经停止。")
             )
         }
+    }
+
+    private func handleServerDidStop(_ stoppedServer: AgentImportHTTPServer) {
+        guard server === stoppedServer else { return }
+        stop(reason: .serverUnavailable)
     }
 
     private func appendEvent(title: String, detail: String) {
@@ -458,7 +487,7 @@ final class AgentImportSessionController {
         case ("POST", .setProjectIcon(let projectID)):
             return setProjectIcon(projectID, request: request, library: library, onLibraryChanged: onLibraryChanged)
         case ("POST", .shutdown):
-            stop()
+            stop(reason: .remoteShutdown)
             return .json(["ok": true, "status": "stopped"])
         default:
             return .jsonError(
@@ -1416,7 +1445,6 @@ final class AgentImportSessionController {
 struct AgentImportSessionView: View {
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage(AppPreferenceKeys.agentImportGuideCompleted) private var hasCompletedAgentImportGuide = false
-    @State private var didStopSessionInCurrentPresentation = false
 
     let session: AgentImportSessionController
     let library: WebPageLibrary
@@ -1455,8 +1483,7 @@ struct AgentImportSessionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: scenePhase) { _, phase in
             guard phase == .background else { return }
-            didStopSessionInCurrentPresentation = true
-            session.stop()
+            session.stop(reason: .appLifecycle)
         }
         .task(id: automaticStartIdentity) {
             startAutomaticallyIfNeeded()
@@ -1468,14 +1495,14 @@ struct AgentImportSessionView: View {
             (!canStartSession ||
                 !hasCompletedAgentImportGuide ||
                 session.status == .failed ||
-                didStopSessionInCurrentPresentation)
+                session.requiresManualRestart)
     }
 
     private var automaticStartIdentity: String {
         [
             canStartSession ? "can-start" : "locked",
             hasCompletedAgentImportGuide ? "guide-completed" : "guide-needed",
-            didStopSessionInCurrentPresentation ? "stopped-here" : "auto-allowed",
+            session.requiresManualRestart ? "manual-restart" : "auto-allowed",
             session.status.rawValue
         ].joined(separator: ":")
     }
@@ -1540,8 +1567,7 @@ struct AgentImportSessionView: View {
         }
 
         Button(role: .destructive) {
-            didStopSessionInCurrentPresentation = true
-            session.stop()
+            session.stop(reason: .userInitiated)
         } label: {
             Text(AppStrings.localized("关闭 Agent 连接"))
                 .font(.system(size: 15, weight: .bold))
@@ -1628,7 +1654,7 @@ struct AgentImportSessionView: View {
     private func startAutomaticallyIfNeeded() {
         guard canStartSession,
               hasCompletedAgentImportGuide,
-              !didStopSessionInCurrentPresentation,
+              !session.requiresManualRestart,
               session.status == .stopped else {
             return
         }
@@ -1636,7 +1662,6 @@ struct AgentImportSessionView: View {
     }
 
     private func startSession() {
-        didStopSessionInCurrentPresentation = false
         session.start(
             library: library,
             onImport: onImport,
@@ -2209,6 +2234,9 @@ private final class AgentImportHTTPServer {
         label: "\(Bundle.main.bundleIdentifier ?? "com.htmlkeep.community").agent-import-http"
     )
     private var listener: NWListener?
+    private var hasReportedStop = false
+
+    var onStop: (() -> Void)?
 
     init(port: UInt16, handler: @escaping Handler) {
         self.port = port
@@ -2226,6 +2254,14 @@ private final class AgentImportHTTPServer {
             name: "HTML Keep",
             type: "_htmlanywhere._tcp"
         )
+        listener.stateUpdateHandler = { [weak self] state in
+            switch state {
+            case .failed(_), .cancelled:
+                self?.reportStopIfNeeded()
+            default:
+                break
+            }
+        }
         listener.newConnectionHandler = { [weak self] connection in
             self?.handle(connection)
         }
@@ -2236,6 +2272,12 @@ private final class AgentImportHTTPServer {
     func stop() {
         listener?.cancel()
         listener = nil
+    }
+
+    private func reportStopIfNeeded() {
+        guard !hasReportedStop else { return }
+        hasReportedStop = true
+        onStop?()
     }
 
     private func handle(_ connection: NWConnection) {
