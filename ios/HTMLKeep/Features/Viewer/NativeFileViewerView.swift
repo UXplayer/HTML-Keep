@@ -1,4 +1,5 @@
 import AVKit
+import MarkdownUI
 import QuickLook
 import SwiftUI
 import UniformTypeIdentifiers
@@ -15,6 +16,7 @@ struct NativeFileViewerView: View {
 
     @State private var imagePreview: NativeFilePreviewItem?
     @State private var mediaPreview: NativeFilePreviewItem?
+    @State private var markdownPage: NativeFilePreviewItem?
     @State private var textPreview: NativeFilePreviewItem?
     @State private var systemPreview: NativeFilePreviewItem?
     @State private var isActionsPopoverPresented = false
@@ -33,7 +35,12 @@ struct NativeFileViewerView: View {
         ZStack {
             AppPageBackground()
 
-            if files.isEmpty {
+            if let directMarkdownFile {
+                NativeMarkdownDocumentView(
+                    url: folderURL.appendingPathComponent(directMarkdownFile.relativePath, isDirectory: false),
+                    projectRootURL: folderURL
+                )
+            } else if files.isEmpty {
                 emptyState
                     .padding(20)
             } else {
@@ -80,6 +87,11 @@ struct NativeFileViewerView: View {
         }
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(activityItems: [payload.url])
+        }
+        .navigationDestination(isPresented: markdownPageBinding) {
+            if let markdownPage {
+                NativeMarkdownPageView(url: markdownPage.url, projectRootURL: folderURL)
+            }
         }
         .alert(AppStrings.localized("重命名项目"), isPresented: $isRenameAlertPresented) {
             TextField(AppStrings.localized("项目名称"), text: $draftProjectTitle)
@@ -247,6 +259,13 @@ struct NativeFileViewerView: View {
         deletedPage != nil
     }
 
+    private var directMarkdownFile: WebPageProjectFile? {
+        guard files.count == 1, let file = files.first, kind(for: file) == .markdown else {
+            return nil
+        }
+        return file
+    }
+
     private var normalizedDraftProjectTitle: String {
         draftProjectTitle
             .components(separatedBy: .whitespacesAndNewlines)
@@ -260,6 +279,16 @@ struct NativeFileViewerView: View {
         } set: { isPresented in
             if !isPresented {
                 shareErrorMessage = nil
+            }
+        }
+    }
+
+    private var markdownPageBinding: Binding<Bool> {
+        Binding {
+            markdownPage != nil
+        } set: { isPresented in
+            if !isPresented {
+                markdownPage = nil
             }
         }
     }
@@ -300,6 +329,8 @@ struct NativeFileViewerView: View {
             }
         case .audio, .video:
             mediaPreview = NativeFilePreviewItem(url: url)
+        case .markdown:
+            markdownPage = NativeFilePreviewItem(url: url)
         case .text:
             textPreview = NativeFilePreviewItem(url: url)
         case .other:
@@ -322,6 +353,10 @@ struct NativeFileViewerView: View {
     }
 
     private func kind(for file: WebPageProjectFile) -> NativeFileKind {
+        if Self.isMarkdownExtension(file.relativePath) {
+            return .markdown
+        }
+
         let type = file.typeIdentifier.flatMap(UTType.init) ??
             UTType(filenameExtension: URL(fileURLWithPath: file.relativePath).pathExtension)
         guard let type else { return .other }
@@ -407,6 +442,11 @@ struct NativeFileViewerView: View {
         ].contains(ext)
     }
 
+    private static func isMarkdownExtension(_ relativePath: String) -> Bool {
+        let ext = URL(fileURLWithPath: relativePath).pathExtension.lowercased()
+        return ext == "md" || ext == "markdown"
+    }
+
     private static func directoryPath(for relativePath: String) -> String {
         let components = relativePath
             .split(separator: "/", omittingEmptySubsequences: true)
@@ -441,6 +481,7 @@ private enum NativeFileKind {
     case video
     case audio
     case pdf
+    case markdown
     case text
     case document
     case other
@@ -451,6 +492,7 @@ private enum NativeFileKind {
         case .video: return "film"
         case .audio: return "waveform"
         case .pdf: return "doc.richtext"
+        case .markdown: return "text.document"
         case .text: return "doc.plaintext"
         case .document: return "doc.text"
         case .other: return "doc"
@@ -463,6 +505,7 @@ private enum NativeFileKind {
         case .video: return AppTheme.aiPurple
         case .audio: return AppTheme.mint
         case .pdf: return AppTheme.coral
+        case .markdown: return AppTheme.deepWater
         case .text: return AppTheme.deepWater
         case .document: return AppTheme.deepWater
         case .other: return AppTheme.textSecondary
@@ -699,15 +742,459 @@ private struct NativePlainTextPreview: View {
             }
         }
         .onAppear {
-            text = Self.previewText(from: url)
+            text = NativeTextFilePreviewReader.previewText(from: url)
         }
     }
 
     static func canPreview(url: URL) -> Bool {
-        previewText(from: url, maximumByteCount: 4096) != nil
+        NativeTextFilePreviewReader.previewText(from: url, maximumByteCount: 4096) != nil
+    }
+}
+
+private struct NativeMarkdownPageView: View {
+    let url: URL
+    let projectRootURL: URL
+
+    var body: some View {
+        NativeMarkdownDocumentView(url: url, projectRootURL: projectRootURL)
+            .navigationTitle(url.lastPathComponent)
+            .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct NativeMarkdownDocumentView: View {
+    let url: URL
+    let projectRootURL: URL
+    @State private var markdown: String?
+    @State private var imagePreview: NativeFilePreviewItem?
+    @State private var mediaPreview: NativeFilePreviewItem?
+    @State private var markdownPage: NativeFilePreviewItem?
+    @State private var textPreview: NativeFilePreviewItem?
+    @State private var systemPreview: NativeFilePreviewItem?
+
+    var body: some View {
+        ZStack {
+            AppPageBackground()
+
+            if let markdown {
+                ScrollView {
+                    Markdown(
+                        markdown,
+                        baseURL: baseURL,
+                        imageBaseURL: baseURL
+                    )
+                    .markdownTheme(Self.htmlKeepMarkdownTheme)
+                    .environment(\.openURL, OpenURLAction { targetURL in
+                        handleOpenURL(targetURL)
+                    })
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(16)
+                }
+                .scrollContentBackground(.hidden)
+            } else {
+                Text(AppStrings.localized("无法以纯文本预览这个文件。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+        .task(id: url) {
+            markdown = NativeTextFilePreviewReader.previewText(from: url)
+                .map(NativeMarkdownContentNormalizer.markdownForPreview)
+        }
+        .sheet(item: $imagePreview) { item in
+            NativeImagePreview(url: item.url)
+        }
+        .sheet(item: $mediaPreview) { item in
+            NativeMediaPreview(url: item.url)
+        }
+        .sheet(item: $textPreview) { item in
+            NativePlainTextPreview(url: item.url)
+        }
+        .sheet(item: $systemPreview) { item in
+            NativeSystemFilePreview(url: item.url)
+        }
+        .navigationDestination(isPresented: markdownPageBinding) {
+            if let markdownPage {
+                NativeMarkdownPageView(url: markdownPage.url, projectRootURL: projectRootURL)
+            }
+        }
     }
 
-    private static func previewText(
+    private var baseURL: URL {
+        url.deletingLastPathComponent()
+    }
+
+    private var markdownPageBinding: Binding<Bool> {
+        Binding {
+            markdownPage != nil
+        } set: { isPresented in
+            if !isPresented {
+                markdownPage = nil
+            }
+        }
+    }
+
+    private func handleOpenURL(_ targetURL: URL) -> OpenURLAction.Result {
+        guard !targetURL.relativeString.hasPrefix("#") else {
+            return .handled
+        }
+
+        if let localURL = resolvedLocalFileURL(for: targetURL) {
+            openLocalFile(localURL)
+            return .handled
+        }
+
+        switch targetURL.scheme?.lowercased() {
+        case "http", "https", "mailto", "tel":
+            return .systemAction
+        default:
+            return .discarded
+        }
+    }
+
+    private func openLocalFile(_ fileURL: URL) {
+        switch Self.kind(for: fileURL) {
+        case .image:
+            if UIImage(contentsOfFile: fileURL.path) != nil {
+                imagePreview = NativeFilePreviewItem(url: fileURL)
+            } else {
+                systemPreview = NativeFilePreviewItem(url: fileURL)
+            }
+        case .audio, .video:
+            mediaPreview = NativeFilePreviewItem(url: fileURL)
+        case .markdown:
+            markdownPage = NativeFilePreviewItem(url: fileURL)
+        case .text:
+            textPreview = NativeFilePreviewItem(url: fileURL)
+        case .other:
+            if NativePlainTextPreview.canPreview(url: fileURL) {
+                textPreview = NativeFilePreviewItem(url: fileURL)
+            } else {
+                systemPreview = NativeFilePreviewItem(url: fileURL)
+            }
+        case .pdf, .document:
+            systemPreview = NativeFilePreviewItem(url: fileURL)
+        }
+    }
+
+    private func resolvedLocalFileURL(for targetURL: URL) -> URL? {
+        let candidateURL: URL
+        if targetURL.isFileURL {
+            candidateURL = targetURL
+        } else if targetURL.scheme == nil {
+            guard let relativePath = Self.relativePath(from: targetURL), !relativePath.isEmpty else {
+                return nil
+            }
+            candidateURL = URL(fileURLWithPath: relativePath, relativeTo: baseURL)
+        } else {
+            return nil
+        }
+
+        return existingFileURL(matching: candidateURL)
+    }
+
+    private func existingFileURL(matching candidateURL: URL) -> URL? {
+        for fileURL in candidateFileURLs(for: candidateURL) {
+            guard isInsideProjectRoot(fileURL) else {
+                continue
+            }
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory) {
+                if isDirectory.boolValue {
+                    if let indexURL = existingDirectoryIndexURL(in: fileURL) {
+                        return indexURL
+                    }
+                } else {
+                    return fileURL
+                }
+            }
+        }
+        return nil
+    }
+
+    private func candidateFileURLs(for candidateURL: URL) -> [URL] {
+        let fileURL = candidateURL.standardizedFileURL
+        var candidates = [fileURL]
+        if fileURL.pathExtension.isEmpty {
+            candidates.append(fileURL.appendingPathExtension("md"))
+            candidates.append(fileURL.appendingPathExtension("markdown"))
+        }
+        return candidates
+    }
+
+    private func existingDirectoryIndexURL(in directoryURL: URL) -> URL? {
+        let names = ["README.md", "README.markdown", "index.md", "index.markdown", "index.html", "index.htm"]
+        return names
+            .map { directoryURL.appendingPathComponent($0, isDirectory: false) }
+            .first { FileManager.default.fileExists(atPath: $0.path) && isInsideProjectRoot($0) }
+    }
+
+    private func isInsideProjectRoot(_ fileURL: URL) -> Bool {
+        let rootPath = projectRootURL.standardizedFileURL.resolvingSymlinksInPath().path
+        let filePath = fileURL.standardizedFileURL.resolvingSymlinksInPath().path
+        return filePath == rootPath || filePath.hasPrefix(rootPath + "/")
+    }
+
+    private static func relativePath(from url: URL) -> String? {
+        if let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           !components.path.isEmpty {
+            return components.path
+        }
+        let rawValue = url.relativeString
+        guard !rawValue.hasPrefix("#") else {
+            return nil
+        }
+        return rawValue
+            .split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
+            .first
+            .map(String.init)?
+            .removingPercentEncoding
+    }
+
+    private static func kind(for url: URL) -> NativeFileKind {
+        if isMarkdownExtension(url.path) {
+            return .markdown
+        }
+
+        let type = UTType(filenameExtension: url.pathExtension)
+        guard let type else { return .other }
+        if type.conforms(to: .image) { return .image }
+        if type.conforms(to: .movie) { return .video }
+        if type.conforms(to: .audio) { return .audio }
+        if type.conforms(to: .pdf) { return .pdf }
+        if type.conforms(to: .text) || type.conforms(to: .json) || type.conforms(to: .xml) || isKnownTextExtension(url.path) {
+            return .text
+        }
+        return .other
+    }
+
+    private static func isKnownTextExtension(_ path: String) -> Bool {
+        let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+        return [
+            "txt", "text", "lrc", "md", "markdown", "csv", "tsv", "log",
+            "json", "xml", "yaml", "yml", "ini", "conf", "cfg",
+            "srt", "ass", "ssa", "vtt", "css", "js", "mjs", "ts"
+        ].contains(ext)
+    }
+
+    private static func isMarkdownExtension(_ path: String) -> Bool {
+        let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
+        return ext == "md" || ext == "markdown"
+    }
+
+    private static let htmlKeepMarkdownTheme = Theme.gitHub
+        .text {
+            ForegroundColor(AppTheme.contentPrimary)
+            BackgroundColor(nil)
+            FontSize(16)
+        }
+}
+
+private enum NativeMarkdownContentNormalizer {
+    static func markdownForPreview(_ markdown: String) -> String {
+        convertHTMLAnchorLinksOutsideFencedCode(in: markdown)
+    }
+
+    private static func convertHTMLAnchorLinksOutsideFencedCode(in markdown: String) -> String {
+        var result = ""
+        var cursor = markdown.startIndex
+        var isInsideFencedCode = false
+
+        while cursor < markdown.endIndex {
+            let lineEnd = markdown[cursor...].firstIndex(of: "\n")
+                .map { markdown.index(after: $0) } ?? markdown.endIndex
+            let line = String(markdown[cursor..<lineEnd])
+
+            if isFencedCodeDelimiter(line) {
+                isInsideFencedCode.toggle()
+                result += line
+            } else if isInsideFencedCode {
+                result += line
+            } else {
+                result += convertHTMLAnchorLinks(in: line)
+            }
+
+            cursor = lineEnd
+        }
+
+        return result
+    }
+
+    private static func isFencedCodeDelimiter(_ line: String) -> Bool {
+        let leadingSpaces = line.prefix { $0 == " " }.count
+        guard leadingSpaces <= 3 else { return false }
+
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasPrefix("```") || trimmed.hasPrefix("~~~")
+    }
+
+    private static func convertHTMLAnchorLinks(in text: String) -> String {
+        let pattern = #"<a\b[^>]*>.*?</a>"#
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: [.caseInsensitive, .dotMatchesLineSeparators]
+        ) else {
+            return text
+        }
+
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+        guard !matches.isEmpty else { return text }
+
+        var result = ""
+        var lastLocation = 0
+        for match in matches {
+            let range = match.range
+            if range.location > lastLocation {
+                result += nsText.substring(with: NSRange(location: lastLocation, length: range.location - lastLocation))
+            }
+
+            let anchorHTML = nsText.substring(with: range)
+            result += markdownLink(fromHTMLAnchor: anchorHTML) ?? anchorHTML
+            lastLocation = range.location + range.length
+        }
+
+        if lastLocation < nsText.length {
+            result += nsText.substring(from: lastLocation)
+        }
+
+        return result
+    }
+
+    private static func markdownLink(fromHTMLAnchor anchorHTML: String) -> String? {
+        guard let openingRange = anchorHTML.range(
+            of: #"<\s*a\b[^>]*>"#,
+            options: [.caseInsensitive, .regularExpression]
+        ),
+              let closingRange = anchorHTML.range(
+                of: #"</\s*a\s*>"#,
+                options: [.caseInsensitive, .regularExpression],
+                range: openingRange.upperBound..<anchorHTML.endIndex
+              ) else {
+            return nil
+        }
+
+        let openingTag = String(anchorHTML[openingRange])
+        guard let href = htmlAttributes(in: openingTag)["href"].map(decodeBasicHTMLEntities)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !href.isEmpty else {
+            return nil
+        }
+
+        let rawLabel = String(anchorHTML[openingRange.upperBound..<closingRange.lowerBound])
+        let label = markdownLinkLabel(fromHTML: rawLabel)
+        guard !label.isEmpty else { return nil }
+
+        return "[\(markdownEscapedLinkLabel(label))](<\(markdownEscapedLinkDestination(href))>)"
+    }
+
+    private static func htmlAttributes(in tagText: String) -> [String: String] {
+        let pattern = #"([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return [:]
+        }
+
+        let nsText = tagText as NSString
+        var result: [String: String] = [:]
+        for match in regex.matches(in: tagText, range: NSRange(location: 0, length: nsText.length)) {
+            guard match.numberOfRanges == 3 else { continue }
+
+            let name = nsText.substring(with: match.range(at: 1)).lowercased()
+            var value = nsText.substring(with: match.range(at: 2))
+            if (value.hasPrefix("\"") && value.hasSuffix("\"")) ||
+                (value.hasPrefix("'") && value.hasSuffix("'")) {
+                value = String(value.dropFirst().dropLast())
+            }
+            result[name] = value
+        }
+        return result
+    }
+
+    private static func markdownLinkLabel(fromHTML html: String) -> String {
+        let withoutTags = html.replacingOccurrences(
+            of: "<[^>]+>",
+            with: " ",
+            options: .regularExpression
+        )
+        return decodeBasicHTMLEntities(withoutTags)
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private static func markdownEscapedLinkLabel(_ label: String) -> String {
+        label
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "[", with: "\\[")
+            .replacingOccurrences(of: "]", with: "\\]")
+    }
+
+    private static func markdownEscapedLinkDestination(_ destination: String) -> String {
+        destination
+            .replacingOccurrences(of: "\n", with: "")
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: ">", with: "%3E")
+    }
+
+    private static func decodeBasicHTMLEntities(_ text: String) -> String {
+        let namedDecoded = text
+            .replacingOccurrences(of: "&nbsp;", with: " ", options: .caseInsensitive)
+            .replacingOccurrences(of: "&amp;", with: "&", options: .caseInsensitive)
+            .replacingOccurrences(of: "&lt;", with: "<", options: .caseInsensitive)
+            .replacingOccurrences(of: "&gt;", with: ">", options: .caseInsensitive)
+            .replacingOccurrences(of: "&quot;", with: "\"", options: .caseInsensitive)
+            .replacingOccurrences(of: "&#39;", with: "'", options: .caseInsensitive)
+            .replacingOccurrences(of: "&apos;", with: "'", options: .caseInsensitive)
+
+        return decodeNumericHTMLEntities(in: namedDecoded)
+    }
+
+    private static func decodeNumericHTMLEntities(in text: String) -> String {
+        let pattern = #"&#(x?[0-9A-Fa-f]+);"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return text
+        }
+
+        let nsText = text as NSString
+        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+        guard !matches.isEmpty else { return text }
+
+        var result = ""
+        var lastLocation = 0
+        for match in matches {
+            let fullRange = match.range(at: 0)
+            if fullRange.location > lastLocation {
+                result += nsText.substring(with: NSRange(location: lastLocation, length: fullRange.location - lastLocation))
+            }
+
+            let rawNumber = nsText.substring(with: match.range(at: 1))
+            result += decodedNumericEntity(rawNumber) ?? nsText.substring(with: fullRange)
+            lastLocation = fullRange.location + fullRange.length
+        }
+
+        if lastLocation < nsText.length {
+            result += nsText.substring(from: lastLocation)
+        }
+
+        return result
+    }
+
+    private static func decodedNumericEntity(_ rawNumber: String) -> String? {
+        let value: UInt32?
+        if rawNumber.lowercased().hasPrefix("x") {
+            value = UInt32(rawNumber.dropFirst(), radix: 16)
+        } else {
+            value = UInt32(rawNumber, radix: 10)
+        }
+
+        guard let value, let scalar = UnicodeScalar(value) else {
+            return nil
+        }
+        return String(scalar)
+    }
+}
+
+private enum NativeTextFilePreviewReader {
+    static func previewText(
         from url: URL,
         maximumByteCount: Int = 5 * 1024 * 1024
     ) -> String? {
