@@ -54,6 +54,7 @@
 		200000000000000000000147 /* Features/DebugTools/DebugToolsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000283 /* Features/DebugTools/DebugToolsPage.swift */; };
 		200000000000000000000148 /* Features/AgentImport/AgentImportSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000284 /* Features/AgentImport/AgentImportSession.swift */; };
 		300000000000000000000001 /* SideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 300000000000000000000002 /* SideMenu */; };
+		300000000000000000000004 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 300000000000000000000005 /* MarkdownUI */; };
 		400000000000000000000101 /* ProjectWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000201 /* ProjectWidget.swift */; };
 		400000000000000000000102 /* Shared/ProjectWidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000202 /* Shared/ProjectWidgetShared.swift */; };
 		400000000000000000000103 /* Shared/ProjectWidgetShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000202 /* Shared/ProjectWidgetShared.swift */; };
@@ -179,6 +180,7 @@
 			files = (
 				200000000000000000000114 /* libz.tbd in Frameworks */,
 				300000000000000000000001 /* SideMenu in Frameworks */,
+				300000000000000000000004 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -296,6 +298,7 @@
 			name = HTMLKeep;
 			packageProductDependencies = (
 				300000000000000000000002 /* SideMenu */,
+				300000000000000000000005 /* MarkdownUI */,
 			);
 			productName = HTMLKeep;
 			productReference = 200000000000000000000207 /* HTMLKeep-Debug.app */;
@@ -377,6 +380,7 @@
 			mainGroup = 200000000000000000000401;
 			packageReferences = (
 				300000000000000000000003 /* XCRemoteSwiftPackageReference "SideMenu" */,
+				300000000000000000000006 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			productRefGroup = 200000000000000000000403 /* Products */;
 			projectDirPath = "";
@@ -793,6 +797,14 @@
 				minimumVersion = 6.0.0;
 			};
 		};
+		300000000000000000000006 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -800,6 +812,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 300000000000000000000003 /* XCRemoteSwiftPackageReference "SideMenu" */;
 			productName = SideMenu;
+		};
+		300000000000000000000005 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 300000000000000000000006 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
