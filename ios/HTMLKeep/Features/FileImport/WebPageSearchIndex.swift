@@ -231,15 +231,23 @@ struct WebPageSearchIndex: Codable {
     ) -> [WebPageSearchDocument] {
         page.resolvedEntries.map { entry in
             let entryFileName = entry.entryFileName
-            let htmlText: String
+            let contentText: String
             if includeHTMLContent,
-               page.resolvedProjectKind == .html,
                entry.source != .bundledArchiveIndex,
                entry.source != .nativeFileIndex {
                 let entryURL = folderURL.appendingPathComponent(entry.entryRelativePath, isDirectory: false)
-                htmlText = Self.extractedText(fromHTMLAt: entryURL, fileManager: fileManager)
+                let format = page.singleFileFormat ?? WebPageSingleFileFormat.format(for: entryURL)
+                if page.resolvedProjectKind == .html || format == .html {
+                    contentText = Self.extractedText(fromHTMLAt: entryURL, fileManager: fileManager)
+                } else if page.resolvedProjectKind == .singleFile,
+                          format == .markdown || format == .text,
+                          let text = Self.readTextFile(at: entryURL) {
+                    contentText = String(text.prefix(20_000))
+                } else {
+                    contentText = ""
+                }
             } else {
-                htmlText = ""
+                contentText = ""
             }
 
             let fileText = [
@@ -256,7 +264,7 @@ struct WebPageSearchIndex: Codable {
                 projectTitle: page.title,
                 entryTitle: entry.title,
                 fileText: fileText,
-                contentText: htmlText
+                contentText: contentText
             )
         }
     }

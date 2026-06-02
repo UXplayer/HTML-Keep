@@ -14,11 +14,7 @@ struct NativeFileViewerView: View {
     var onRestoreDeletedPage: (() -> Bool)? = nil
     var onPermanentlyDeletePage: (() -> Void)? = nil
 
-    @State private var imagePreview: NativeFilePreviewItem?
-    @State private var mediaPreview: NativeFilePreviewItem?
-    @State private var markdownPage: NativeFilePreviewItem?
-    @State private var textPreview: NativeFilePreviewItem?
-    @State private var systemPreview: NativeFilePreviewItem?
+    @State private var previewPage: NativeFilePreviewItem?
     @State private var isActionsPopoverPresented = false
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
@@ -35,9 +31,9 @@ struct NativeFileViewerView: View {
         ZStack {
             AppPageBackground()
 
-            if let directMarkdownFile {
-                NativeMarkdownDocumentView(
-                    url: folderURL.appendingPathComponent(directMarkdownFile.relativePath, isDirectory: false),
+            if let directPreviewFile {
+                NativeFilePreviewPageView(
+                    url: folderURL.appendingPathComponent(directPreviewFile.relativePath, isDirectory: false),
                     projectRootURL: folderURL
                 )
             } else if files.isEmpty {
@@ -73,24 +69,12 @@ struct NativeFileViewerView: View {
                 }
             }
         }
-        .sheet(item: $imagePreview) { item in
-            NativeImagePreview(url: item.url)
-        }
-        .sheet(item: $mediaPreview) { item in
-            NativeMediaPreview(url: item.url)
-        }
-        .sheet(item: $textPreview) { item in
-            NativePlainTextPreview(url: item.url)
-        }
-        .sheet(item: $systemPreview) { item in
-            NativeSystemFilePreview(url: item.url)
-        }
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(activityItems: [payload.url])
         }
-        .navigationDestination(isPresented: markdownPageBinding) {
-            if let markdownPage {
-                NativeMarkdownPageView(url: markdownPage.url, projectRootURL: folderURL)
+        .navigationDestination(isPresented: previewPageBinding) {
+            if let previewPage {
+                NativeFilePreviewPageView(url: previewPage.url, projectRootURL: folderURL)
             }
         }
         .alert(AppStrings.localized("重命名项目"), isPresented: $isRenameAlertPresented) {
@@ -259,8 +243,8 @@ struct NativeFileViewerView: View {
         deletedPage != nil
     }
 
-    private var directMarkdownFile: WebPageProjectFile? {
-        guard files.count == 1, let file = files.first, kind(for: file) == .markdown else {
+    private var directPreviewFile: WebPageProjectFile? {
+        guard files.count == 1, let file = files.first else {
             return nil
         }
         return file
@@ -283,12 +267,12 @@ struct NativeFileViewerView: View {
         }
     }
 
-    private var markdownPageBinding: Binding<Bool> {
+    private var previewPageBinding: Binding<Bool> {
         Binding {
-            markdownPage != nil
+            previewPage != nil
         } set: { isPresented in
             if !isPresented {
-                markdownPage = nil
+                previewPage = nil
             }
         }
     }
@@ -320,28 +304,7 @@ struct NativeFileViewerView: View {
 
     private func open(_ file: WebPageProjectFile) {
         let url = folderURL.appendingPathComponent(file.relativePath, isDirectory: false)
-        switch kind(for: file) {
-        case .image:
-            if UIImage(contentsOfFile: url.path) != nil {
-                imagePreview = NativeFilePreviewItem(url: url)
-            } else {
-                systemPreview = NativeFilePreviewItem(url: url)
-            }
-        case .audio, .video:
-            mediaPreview = NativeFilePreviewItem(url: url)
-        case .markdown:
-            markdownPage = NativeFilePreviewItem(url: url)
-        case .text:
-            textPreview = NativeFilePreviewItem(url: url)
-        case .other:
-            if NativePlainTextPreview.canPreview(url: url) {
-                textPreview = NativeFilePreviewItem(url: url)
-            } else {
-                systemPreview = NativeFilePreviewItem(url: url)
-            }
-        case .pdf, .document:
-            systemPreview = NativeFilePreviewItem(url: url)
-        }
+        previewPage = NativeFilePreviewItem(url: url)
     }
 
     private func subtitle(for file: WebPageProjectFile) -> String {
@@ -353,21 +316,7 @@ struct NativeFileViewerView: View {
     }
 
     private func kind(for file: WebPageProjectFile) -> NativeFileKind {
-        if Self.isMarkdownExtension(file.relativePath) {
-            return .markdown
-        }
-
-        let type = file.typeIdentifier.flatMap(UTType.init) ??
-            UTType(filenameExtension: URL(fileURLWithPath: file.relativePath).pathExtension)
-        guard let type else { return .other }
-        if type.conforms(to: .image) { return .image }
-        if type.conforms(to: .movie) { return .video }
-        if type.conforms(to: .audio) { return .audio }
-        if type.conforms(to: .pdf) { return .pdf }
-        if type.conforms(to: .text) || type.conforms(to: .json) || type.conforms(to: .xml) || Self.isKnownTextExtension(file.relativePath) {
-            return .text
-        }
-        return .other
+        NativeFileKind.kind(for: file)
     }
 
     private func startRenamingAfterActionsPopoverDismiss() {
@@ -433,20 +382,6 @@ struct NativeFileViewerView: View {
         return formatter.string(fromByteCount: byteCount)
     }
 
-    private static func isKnownTextExtension(_ relativePath: String) -> Bool {
-        let ext = URL(fileURLWithPath: relativePath).pathExtension.lowercased()
-        return [
-            "txt", "text", "lrc", "md", "markdown", "csv", "tsv", "log",
-            "json", "xml", "yaml", "yml", "ini", "conf", "cfg",
-            "srt", "ass", "ssa", "vtt", "css", "js", "mjs", "ts"
-        ].contains(ext)
-    }
-
-    private static func isMarkdownExtension(_ relativePath: String) -> Bool {
-        let ext = URL(fileURLWithPath: relativePath).pathExtension.lowercased()
-        return ext == "md" || ext == "markdown"
-    }
-
     private static func directoryPath(for relativePath: String) -> String {
         let components = relativePath
             .split(separator: "/", omittingEmptySubsequences: true)
@@ -485,6 +420,38 @@ private enum NativeFileKind {
     case text
     case document
     case other
+
+    static func kind(for file: WebPageProjectFile) -> NativeFileKind {
+        let url = URL(fileURLWithPath: file.relativePath)
+        return kind(
+            for: WebPageSingleFileFormat.format(for: url, typeIdentifier: file.typeIdentifier)
+        )
+    }
+
+    static func kind(for url: URL) -> NativeFileKind {
+        kind(for: WebPageSingleFileFormat.format(for: url))
+    }
+
+    static func kind(for format: WebPageSingleFileFormat) -> NativeFileKind {
+        switch format {
+        case .html, .text:
+            return .text
+        case .markdown:
+            return .markdown
+        case .image:
+            return .image
+        case .video:
+            return .video
+        case .audio:
+            return .audio
+        case .pdf:
+            return .pdf
+        case .document:
+            return .document
+        case .file:
+            return .other
+        }
+    }
 
     var systemImage: String {
         switch self {
@@ -529,30 +496,55 @@ private struct NativeFileKindIcon: View {
     }
 }
 
-private struct NativeImagePreview: View {
+private struct NativeFilePreviewPageView: View {
     let url: URL
-    @Environment(\.dismiss) private var dismiss
+    let projectRootURL: URL
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let image = UIImage(contentsOfFile: url.path) {
-                    ZoomableNativeImageView(image: image)
-                    .background(Color.black.opacity(0.92))
-                } else {
-                    Text(AppStrings.localized("无法预览这个文件。"))
-                        .font(.system(size: 15))
-                        .foregroundStyle(AppTheme.textSecondary)
-                }
-            }
+        previewContent
             .navigationTitle(url.lastPathComponent)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(AppStrings.localized("关闭")) {
-                        dismiss()
-                    }
-                }
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
+        switch NativeFileKind.kind(for: url) {
+        case .image:
+            if UIImage(contentsOfFile: url.path) != nil {
+                NativeImagePreview(url: url)
+            } else {
+                NativeSystemFilePreviewPage(url: url)
+            }
+        case .video, .audio:
+            NativeMediaPreview(url: url)
+        case .markdown:
+            NativeMarkdownDocumentView(url: url, projectRootURL: projectRootURL)
+        case .text:
+            NativePlainTextPreview(url: url)
+        case .pdf, .document:
+            NativeSystemFilePreviewPage(url: url)
+        case .other:
+            if NativePlainTextPreview.canPreview(url: url) {
+                NativePlainTextPreview(url: url)
+            } else {
+                NativeSystemFilePreviewPage(url: url)
+            }
+        }
+    }
+}
+
+private struct NativeImagePreview: View {
+    let url: URL
+
+    var body: some View {
+        Group {
+            if let image = UIImage(contentsOfFile: url.path) {
+                ZoomableNativeImageView(image: image)
+                    .background(Color.black.opacity(0.92))
+            } else {
+                Text(AppStrings.localized("无法预览这个文件。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
             }
         }
     }
@@ -560,7 +552,6 @@ private struct NativeImagePreview: View {
 
 private struct NativeMediaPreview: View {
     let url: URL
-    @Environment(\.dismiss) private var dismiss
     @State private var player: AVPlayer
 
     init(url: URL) {
@@ -569,27 +560,15 @@ private struct NativeMediaPreview: View {
     }
 
     var body: some View {
-        NavigationStack {
-            NativeMediaPlayerView(player: player)
-                .background(Color.black)
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle(url.lastPathComponent)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button(AppStrings.localized("关闭")) {
-                            player.pause()
-                            dismiss()
-                        }
-                    }
-                }
-                .onAppear {
-                    player.play()
-                }
-                .onDisappear {
-                    player.pause()
-                }
-        }
+        NativeMediaPlayerView(player: player)
+            .background(Color.black)
+            .ignoresSafeArea(edges: .bottom)
+            .onAppear {
+                player.play()
+            }
+            .onDisappear {
+                player.pause()
+            }
     }
 }
 
@@ -709,36 +688,24 @@ private final class ZoomableImageScrollView: UIScrollView, UIScrollViewDelegate 
 
 private struct NativePlainTextPreview: View {
     let url: URL
-    @Environment(\.dismiss) private var dismiss
     @State private var text: String?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let text {
-                    ScrollView([.vertical, .horizontal]) {
-                        Text(text)
-                            .font(.system(size: 15, design: .monospaced))
-                            .foregroundStyle(AppTheme.contentPrimary)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .padding(16)
-                    }
-                    .background(AppTheme.pageGradient)
-                } else {
-                    Text(AppStrings.localized("无法以纯文本预览这个文件。"))
-                        .font(.system(size: 15))
-                        .foregroundStyle(AppTheme.textSecondary)
+        Group {
+            if let text {
+                ScrollView([.vertical, .horizontal]) {
+                    Text(text)
+                        .font(.system(size: 15, design: .monospaced))
+                        .foregroundStyle(AppTheme.contentPrimary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        .padding(16)
                 }
-            }
-            .navigationTitle(url.lastPathComponent)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(AppStrings.localized("关闭")) {
-                        dismiss()
-                    }
-                }
+                .background(AppTheme.pageGradient)
+            } else {
+                Text(AppStrings.localized("无法以纯文本预览这个文件。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
             }
         }
         .onAppear {
@@ -751,26 +718,11 @@ private struct NativePlainTextPreview: View {
     }
 }
 
-private struct NativeMarkdownPageView: View {
-    let url: URL
-    let projectRootURL: URL
-
-    var body: some View {
-        NativeMarkdownDocumentView(url: url, projectRootURL: projectRootURL)
-            .navigationTitle(url.lastPathComponent)
-            .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 private struct NativeMarkdownDocumentView: View {
     let url: URL
     let projectRootURL: URL
     @State private var markdown: String?
-    @State private var imagePreview: NativeFilePreviewItem?
-    @State private var mediaPreview: NativeFilePreviewItem?
-    @State private var markdownPage: NativeFilePreviewItem?
-    @State private var textPreview: NativeFilePreviewItem?
-    @State private var systemPreview: NativeFilePreviewItem?
+    @State private var previewPage: NativeFilePreviewItem?
 
     var body: some View {
         ZStack {
@@ -801,21 +753,9 @@ private struct NativeMarkdownDocumentView: View {
             markdown = NativeTextFilePreviewReader.previewText(from: url)
                 .map(NativeMarkdownContentNormalizer.markdownForPreview)
         }
-        .sheet(item: $imagePreview) { item in
-            NativeImagePreview(url: item.url)
-        }
-        .sheet(item: $mediaPreview) { item in
-            NativeMediaPreview(url: item.url)
-        }
-        .sheet(item: $textPreview) { item in
-            NativePlainTextPreview(url: item.url)
-        }
-        .sheet(item: $systemPreview) { item in
-            NativeSystemFilePreview(url: item.url)
-        }
-        .navigationDestination(isPresented: markdownPageBinding) {
-            if let markdownPage {
-                NativeMarkdownPageView(url: markdownPage.url, projectRootURL: projectRootURL)
+        .navigationDestination(isPresented: previewPageBinding) {
+            if let previewPage {
+                NativeFilePreviewPageView(url: previewPage.url, projectRootURL: projectRootURL)
             }
         }
     }
@@ -824,12 +764,12 @@ private struct NativeMarkdownDocumentView: View {
         url.deletingLastPathComponent()
     }
 
-    private var markdownPageBinding: Binding<Bool> {
+    private var previewPageBinding: Binding<Bool> {
         Binding {
-            markdownPage != nil
+            previewPage != nil
         } set: { isPresented in
             if !isPresented {
-                markdownPage = nil
+                previewPage = nil
             }
         }
     }
@@ -853,28 +793,7 @@ private struct NativeMarkdownDocumentView: View {
     }
 
     private func openLocalFile(_ fileURL: URL) {
-        switch Self.kind(for: fileURL) {
-        case .image:
-            if UIImage(contentsOfFile: fileURL.path) != nil {
-                imagePreview = NativeFilePreviewItem(url: fileURL)
-            } else {
-                systemPreview = NativeFilePreviewItem(url: fileURL)
-            }
-        case .audio, .video:
-            mediaPreview = NativeFilePreviewItem(url: fileURL)
-        case .markdown:
-            markdownPage = NativeFilePreviewItem(url: fileURL)
-        case .text:
-            textPreview = NativeFilePreviewItem(url: fileURL)
-        case .other:
-            if NativePlainTextPreview.canPreview(url: fileURL) {
-                textPreview = NativeFilePreviewItem(url: fileURL)
-            } else {
-                systemPreview = NativeFilePreviewItem(url: fileURL)
-            }
-        case .pdf, .document:
-            systemPreview = NativeFilePreviewItem(url: fileURL)
-        }
+        previewPage = NativeFilePreviewItem(url: fileURL)
     }
 
     private func resolvedLocalFileURL(for targetURL: URL) -> URL? {
@@ -949,37 +868,6 @@ private struct NativeMarkdownDocumentView: View {
             .first
             .map(String.init)?
             .removingPercentEncoding
-    }
-
-    private static func kind(for url: URL) -> NativeFileKind {
-        if isMarkdownExtension(url.path) {
-            return .markdown
-        }
-
-        let type = UTType(filenameExtension: url.pathExtension)
-        guard let type else { return .other }
-        if type.conforms(to: .image) { return .image }
-        if type.conforms(to: .movie) { return .video }
-        if type.conforms(to: .audio) { return .audio }
-        if type.conforms(to: .pdf) { return .pdf }
-        if type.conforms(to: .text) || type.conforms(to: .json) || type.conforms(to: .xml) || isKnownTextExtension(url.path) {
-            return .text
-        }
-        return .other
-    }
-
-    private static func isKnownTextExtension(_ path: String) -> Bool {
-        let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-        return [
-            "txt", "text", "lrc", "md", "markdown", "csv", "tsv", "log",
-            "json", "xml", "yaml", "yml", "ini", "conf", "cfg",
-            "srt", "ass", "ssa", "vtt", "css", "js", "mjs", "ts"
-        ].contains(ext)
-    }
-
-    private static func isMarkdownExtension(_ path: String) -> Bool {
-        let ext = URL(fileURLWithPath: path).pathExtension.lowercased()
-        return ext == "md" || ext == "markdown"
     }
 
     private static let htmlKeepMarkdownTheme = Theme.gitHub
@@ -1247,6 +1135,15 @@ private enum NativeTextFilePreviewReader {
             }
         }
         return controlByteCount > max(8, data.count / 100)
+    }
+}
+
+private struct NativeSystemFilePreviewPage: View {
+    let url: URL
+
+    var body: some View {
+        NativeSystemFilePreview(url: url)
+            .ignoresSafeArea(edges: .bottom)
     }
 }
 

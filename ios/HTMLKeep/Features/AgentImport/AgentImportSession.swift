@@ -169,7 +169,7 @@ private struct AgentImportWebCopy {
         js: [
             "locale": "zh-CN",
             "missing": "未提供",
-            "kindLabels": ["html": "网页项目", "nativeFileArchive": "原生文件包"],
+            "kindLabels": ["html": "网页项目", "singleFile": "单文件项目", "nativeFileArchive": "原生文件包"],
             "statusLabels": ["stopped": "未开启", "starting": "开启中", "running": "已连接", "failed": "无法开启"],
             "unknown": "未知",
             "sessionRule": "保持到你停止，或 App 离开前台",
@@ -244,7 +244,7 @@ private struct AgentImportWebCopy {
         js: [
             "locale": "en-US",
             "missing": "Not provided",
-            "kindLabels": ["html": "Web project", "nativeFileArchive": "Native file package"],
+            "kindLabels": ["html": "Web project", "singleFile": "Single file project", "nativeFileArchive": "Native file package"],
             "statusLabels": ["stopped": "Stopped", "starting": "Starting", "running": "Connected", "failed": "Failed"],
             "unknown": "Unknown",
             "sessionRule": "Until you stop it or the app leaves foreground",
@@ -1204,7 +1204,7 @@ final class AgentImportSessionController {
           "project": {
             "id": "<uuid>",
             "title": "<display title>",
-            "kind": "html | nativeFileArchive",
+            "kind": "html | singleFile | nativeFileArchive",
             "entryRelativePath": "<relative entry path>",
             "entries": [...]
           },
@@ -1307,7 +1307,7 @@ final class AgentImportSessionController {
           "project": {
             "id": "<uuid>",
             "title": "<display title>",
-            "kind": "html | nativeFileArchive",
+            "kind": "html | singleFile | nativeFileArchive",
             "entryRelativePath": "<relative entry path>",
             "entries": [...]
           },

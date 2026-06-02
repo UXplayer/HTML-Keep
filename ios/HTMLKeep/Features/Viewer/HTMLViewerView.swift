@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 private let viewerTopChromeFadeDistance: CGFloat = 72
+private let viewerLoadingIndicatorDelay: TimeInterval = 0.35
 
 struct HTMLViewerView: View {
     let page: WebPage
@@ -17,7 +18,9 @@ struct HTMLViewerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(WebPageLibrary.self) private var library
-    @State private var loadState: ViewerLoadState = .loading
+    @State private var loadState: ViewerLoadState = .loaded
+    @State private var isLoadingIndicatorVisible = false
+    @State private var loadingIndicatorID: UUID?
     @State private var reloadToken = UUID()
     @State private var isActionsPopoverPresented = false
     @State private var sharePayload: SharePayload?
@@ -63,7 +66,7 @@ struct HTMLViewerView: View {
                     .padding(20)
             }
 
-            if case .loading = loadState, entryExists {
+            if isLoadingIndicatorVisible, entryExists {
                 VStack {
                     ProgressView()
                         .padding(12)
@@ -483,6 +486,7 @@ struct HTMLViewerView: View {
 
     private func handleLoadStateChange(_ state: ViewerLoadState) {
         loadState = state
+        updateLoadingIndicator(for: state)
         guard !isRecentlyDeletedViewer else { return }
         switch state {
         case .loaded:
@@ -492,6 +496,22 @@ struct HTMLViewerView: View {
             library.markFailed(page, entry: currentEntry)
         case .loading:
             break
+        }
+    }
+
+    private func updateLoadingIndicator(for state: ViewerLoadState) {
+        switch state {
+        case .loading:
+            let id = UUID()
+            loadingIndicatorID = id
+            isLoadingIndicatorVisible = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + viewerLoadingIndicatorDelay) {
+                guard loadingIndicatorID == id else { return }
+                isLoadingIndicatorVisible = true
+            }
+        case .loaded, .failed:
+            loadingIndicatorID = nil
+            isLoadingIndicatorVisible = false
         }
     }
 
@@ -1200,11 +1220,10 @@ struct WebPageShareExporter {
         let writer = ZipArchiveWriter(fileManager: fileManager)
         let filePaths = try writer.regularFileRelativePaths(
             in: folderURL,
-            excluding: WebPageRuntimeStorage.isRuntimeStoragePath
+            excluding: WebPageLibrary.isAppManagedProjectFilePath
         )
-        let htmlPaths = filePaths.filter(Self.isHTMLPath)
 
-        if filePaths.count == 1, htmlPaths.count == 1 {
+        if filePaths.count == 1 {
             return folderURL.appendingPathComponent(filePaths[0], isDirectory: false)
         }
 
@@ -1218,14 +1237,9 @@ struct WebPageShareExporter {
         try writer.archiveFolder(
             at: folderURL,
             to: archiveURL,
-            excluding: WebPageRuntimeStorage.isRuntimeStoragePath
+            excluding: WebPageLibrary.isAppManagedProjectFilePath
         )
         return archiveURL
-    }
-
-    private static func isHTMLPath(_ path: String) -> Bool {
-        let fileExtension = URL(fileURLWithPath: path).pathExtension.lowercased()
-        return fileExtension == "html" || fileExtension == "htm"
     }
 
     private static func safeFileName(from title: String) -> String {

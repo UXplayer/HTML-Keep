@@ -338,6 +338,7 @@ struct ProjectWidgetProject: Codable, Hashable, Identifiable {
 
 enum ProjectWidgetProjectKind: String, Codable, Hashable {
     case html
+    case singleFile
     case nativeFileArchive
 }
 

@@ -763,7 +763,7 @@ struct AppRootView: View {
         }
 
         let defaultEntry = library.defaultEntry(for: page)
-        let loadStatus = page.opensInNativeFileViewer ? page.lastLoadStatus : defaultEntry.lastLoadStatus
+        let loadStatus = page.opensInNativeFileViewer || page.opensInSingleFilePreview ? page.lastLoadStatus : defaultEntry.lastLoadStatus
         guard !loadStatus.isCloudPackageUnavailable else {
             routeFromExternalEntry {
                 router.popToRoot()
@@ -1958,7 +1958,7 @@ private struct SettingsRecentlyDeletedSheet: View {
     }
 
     private func open(deletedPage: DeletedWebPage, entry: WebPageEntry) {
-        if deletedPage.page.opensInNativeFileViewer {
+        if deletedPage.page.opensInNativeFileViewer || deletedPage.page.opensInSingleFilePreview {
             path.append(.fileViewer(deletedPage.id))
         } else {
             path.append(.viewer(deletedPage.id, entry.id))

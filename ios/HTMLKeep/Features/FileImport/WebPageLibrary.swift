@@ -32,6 +32,7 @@ struct WebPage: Identifiable, Codable, Hashable {
     var defaultEntryID: WebPageEntry.ID? = nil
     var projectIcon: WebPageProjectIcon? = nil
     var projectKind: WebPageProjectKind? = nil
+    var singleFileFormat: WebPageSingleFileFormat? = nil
 
     var entryFileName: String {
         URL(fileURLWithPath: entryRelativePath).lastPathComponent
@@ -41,6 +42,9 @@ struct WebPage: Identifiable, Codable, Hashable {
         if let projectKind {
             return projectKind
         }
+        if singleFileFormat != nil {
+            return .singleFile
+        }
         if resolvedEntries.contains(where: { $0.source == .nativeFileIndex || $0.source == .bundledArchiveIndex }) {
             return .nativeFileArchive
         }
@@ -49,6 +53,10 @@ struct WebPage: Identifiable, Codable, Hashable {
 
     var opensInNativeFileViewer: Bool {
         resolvedProjectKind == .nativeFileArchive
+    }
+
+    var opensInSingleFilePreview: Bool {
+        resolvedProjectKind == .singleFile && singleFileFormat != .html
     }
 
     var resolvedEntries: [WebPageEntry] {
@@ -78,7 +86,61 @@ enum WebPageProjectIconSource: String, Codable, Hashable {
 
 enum WebPageProjectKind: String, Codable, Hashable {
     case html
+    case singleFile
     case nativeFileArchive
+}
+
+enum WebPageSingleFileFormat: String, Codable, Hashable {
+    case html
+    case markdown
+    case image
+    case video
+    case audio
+    case pdf
+    case text
+    case document
+    case file
+
+    static func format(for url: URL, typeIdentifier: String? = nil) -> WebPageSingleFileFormat {
+        if isHTMLExtension(url.pathExtension) {
+            return .html
+        }
+        if isMarkdownExtension(url.pathExtension) {
+            return .markdown
+        }
+
+        let type = typeIdentifier.flatMap(UTType.init) ?? UTType(filenameExtension: url.pathExtension)
+        guard let type else { return .file }
+        if type.conforms(to: .image) { return .image }
+        if type.conforms(to: .movie) { return .video }
+        if type.conforms(to: .audio) { return .audio }
+        if type.conforms(to: .pdf) { return .pdf }
+        if type.conforms(to: .text) || type.conforms(to: .json) || type.conforms(to: .xml) || isKnownTextExtension(url.pathExtension) {
+            return .text
+        }
+        if type.conforms(to: .content) {
+            return .document
+        }
+        return .file
+    }
+
+    static func isHTMLExtension(_ fileExtension: String) -> Bool {
+        let ext = fileExtension.lowercased()
+        return ext == "html" || ext == "htm"
+    }
+
+    static func isMarkdownExtension(_ fileExtension: String) -> Bool {
+        let ext = fileExtension.lowercased()
+        return ext == "md" || ext == "markdown"
+    }
+
+    private static func isKnownTextExtension(_ fileExtension: String) -> Bool {
+        [
+            "txt", "text", "lrc", "csv", "tsv", "log",
+            "json", "xml", "yaml", "yml", "ini", "conf", "cfg",
+            "srt", "ass", "ssa", "vtt", "css", "js", "mjs", "ts"
+        ].contains(fileExtension.lowercased())
+    }
 }
 
 struct WebPageProjectIcon: Codable, Hashable {
@@ -379,6 +441,7 @@ final class WebPageLibrary {
         loadRecentlyDeletedPages()
         loadDeletionTombstones()
         loadRestoreRevisions()
+        promoteStoredSingleFileProjectsIfNeeded()
         normalizeEntryOrdering()
         normalizeRecentlyDeleted()
         refreshAvailability()
@@ -624,6 +687,8 @@ final class WebPageLibrary {
             pages[existingIndex].contentSHA256 = contentSHA256
             pages[existingIndex].lastOpenedAt = Date()
             pages[existingIndex].lastLoadStatus = .ready
+            pages[existingIndex].projectKind = .singleFile
+            pages[existingIndex].singleFileFormat = .html
             if pages[existingIndex].sourceFileName == nil {
                 pages[existingIndex].sourceFileName = Self.sourceFileName(from: sourceURL)
             }
@@ -699,7 +764,9 @@ final class WebPageLibrary {
             safeAreaTopColor: topColor,
             safeAreaBottomColor: bottomColor,
             entries: [entry],
-            defaultEntryID: entry.id
+            defaultEntryID: entry.id,
+            projectKind: .singleFile,
+            singleFileFormat: .html
         )
         page.projectIcon = Self.generatedProjectIcon(
             from: htmlContent,
@@ -721,21 +788,22 @@ final class WebPageLibrary {
         } catch {
             throw WebPageLibraryError.unreadableFile
         }
+        let format = WebPageSingleFileFormat.format(for: sourceURL)
 
         try ensureStorage()
 
         if let existingIndex = pages.firstIndex(where: { $0.contentSHA256 == contentSHA256 }) {
             let id = pages[existingIndex].id
-            if pages[existingIndex].opensInNativeFileViewer {
-                try restoreNativeFileProjectIfNeeded(forPageAt: existingIndex, from: sourceURL)
-                pages[existingIndex].projectKind = .nativeFileArchive
-            }
+            try restoreSingleFileProjectIfNeeded(forPageAt: existingIndex, from: sourceURL, format: format)
             pages[existingIndex].contentSHA256 = contentSHA256
             pages[existingIndex].lastOpenedAt = Date()
             pages[existingIndex].lastLoadStatus = .ready
+            pages[existingIndex].projectKind = .singleFile
+            pages[existingIndex].singleFileFormat = format
             if pages[existingIndex].sourceFileName == nil {
                 pages[existingIndex].sourceFileName = Self.sourceFileName(from: sourceURL)
             }
+            refreshAutomaticProjectIcon(forPageAt: existingIndex)
             sortPages()
             save()
             guard let reusedPage = pages.first(where: { $0.id == id }) else {
@@ -759,27 +827,20 @@ final class WebPageLibrary {
         }
 
         let now = Date()
-        let entry: WebPageEntry
-        do {
-            entry = try Self.archiveFallbackEntry(
-                in: destinationFolderURL,
-                archiveName: Self.sourceFileName(from: sourceURL) ?? fileName,
-                openedAt: now,
-                fileManager: fileManager
-            )
-        } catch {
-            try? fileManager.removeItem(at: destinationFolderURL)
-            throw WebPageLibraryError.unableToPrepareStorage
-        }
-
         let baseTitle = Self.fileProjectTitle(from: sourceURL)
+        let entry = Self.singleFileEntry(
+            id: id,
+            title: baseTitle,
+            relativePath: fileName,
+            openedAt: now
+        )
         var page = WebPage(
             id: id,
             title: uniqueTitle(for: baseTitle),
             sourceDescription: sourceURL.deletingLastPathComponent().lastPathComponent,
             sourceFileName: Self.sourceFileName(from: sourceURL),
             folderName: folderName,
-            entryRelativePath: entry.entryRelativePath,
+            entryRelativePath: fileName,
             contentSHA256: contentSHA256,
             createdAt: now,
             lastOpenedAt: now,
@@ -789,9 +850,11 @@ final class WebPageLibrary {
             safeAreaBottomColor: entry.safeAreaBottomColor,
             entries: [entry],
             defaultEntryID: entry.id,
-            projectKind: .nativeFileArchive
+            projectKind: .singleFile,
+            singleFileFormat: format
         )
-        page.projectIcon = Self.generatedProjectImageIcon(
+        page.projectIcon = Self.generatedSingleFileProjectIcon(
+            format: format,
             in: destinationFolderURL,
             fileManager: fileManager
         )
@@ -822,32 +885,48 @@ final class WebPageLibrary {
                 pages[existingIndex].sourceFileName = Self.sourceFileName(from: sourceURL)
             }
             let folderURL = folderURL(for: pages[existingIndex])
-            if let entries = try? Self.htmlEntries(
+            if let singleFileProject = Self.preparedSingleFileProject(
                 in: folderURL,
                 openedAt: pages[existingIndex].lastOpenedAt,
-                fallbackArchiveName: pages[existingIndex].sourceFileName,
-                fileManager: fileManager
-            ),
-               !entries.isEmpty {
-                upsertEntries(entries, forPageAt: existingIndex)
-            }
-            pages[existingIndex].projectKind = pages[existingIndex].resolvedEntries.contains {
-                $0.source == .nativeFileIndex || $0.source == .bundledArchiveIndex
-            } ? .nativeFileArchive : .html
-            let defaultEntry = defaultEntry(for: pages[existingIndex])
-            if let htmlContent = Self.htmlContent(
-                for: defaultEntry,
-                in: folderURL,
+                entryID: pages[existingIndex].defaultEntryID ?? pages[existingIndex].id,
                 fileManager: fileManager
             ) {
-                let (topColor, bottomColor) = BackgroundColorExtractor.extractColors(
-                    from: htmlContent,
-                    htmlFileURL: entryURL(for: pages[existingIndex], entry: defaultEntry),
-                    projectFolderURL: folderURL,
+                upsertEntries([singleFileProject.entry], forPageAt: existingIndex)
+                pages[existingIndex].projectKind = .singleFile
+                pages[existingIndex].singleFileFormat = singleFileProject.format
+                pages[existingIndex].entryRelativePath = singleFileProject.entry.entryRelativePath
+                pages[existingIndex].defaultEntryID = singleFileProject.entry.id
+                pages[existingIndex].safeAreaTopColor = singleFileProject.entry.safeAreaTopColor
+                pages[existingIndex].safeAreaBottomColor = singleFileProject.entry.safeAreaBottomColor
+            } else {
+                if let entries = try? Self.htmlEntries(
+                    in: folderURL,
+                    openedAt: pages[existingIndex].lastOpenedAt,
+                    fallbackArchiveName: pages[existingIndex].sourceFileName,
                     fileManager: fileManager
-                )
-                pages[existingIndex].safeAreaTopColor = topColor
-                pages[existingIndex].safeAreaBottomColor = bottomColor
+                ),
+                   !entries.isEmpty {
+                    upsertEntries(entries, forPageAt: existingIndex)
+                }
+                pages[existingIndex].projectKind = pages[existingIndex].resolvedEntries.contains {
+                    $0.source == .nativeFileIndex || $0.source == .bundledArchiveIndex
+                } ? .nativeFileArchive : .html
+                pages[existingIndex].singleFileFormat = nil
+                let defaultEntry = defaultEntry(for: pages[existingIndex])
+                if let htmlContent = Self.htmlContent(
+                    for: defaultEntry,
+                    in: folderURL,
+                    fileManager: fileManager
+                ) {
+                    let (topColor, bottomColor) = BackgroundColorExtractor.extractColors(
+                        from: htmlContent,
+                        htmlFileURL: entryURL(for: pages[existingIndex], entry: defaultEntry),
+                        projectFolderURL: folderURL,
+                        fileManager: fileManager
+                    )
+                    pages[existingIndex].safeAreaTopColor = topColor
+                    pages[existingIndex].safeAreaBottomColor = bottomColor
+                }
             }
             refreshAutomaticProjectIcon(forPageAt: existingIndex)
             sortPages()
@@ -875,11 +954,50 @@ final class WebPageLibrary {
             throw WebPageLibraryError.unableToExtractArchive
         }
 
+        let now = Date()
+        if let singleFileProject = Self.preparedSingleFileProject(
+            in: destinationFolderURL,
+            openedAt: now,
+            entryID: id,
+            fileManager: fileManager
+        ) {
+            var page = WebPage(
+                id: id,
+                title: uniqueTitle(for: singleFileProject.entry.title),
+                sourceDescription: sourceURL.deletingLastPathComponent().lastPathComponent,
+                sourceFileName: Self.sourceFileName(from: sourceURL),
+                folderName: folderName,
+                entryRelativePath: singleFileProject.entry.entryRelativePath,
+                contentSHA256: contentSHA256,
+                createdAt: now,
+                lastOpenedAt: now,
+                updatedAt: now,
+                lastLoadStatus: .ready,
+                safeAreaTopColor: singleFileProject.entry.safeAreaTopColor,
+                safeAreaBottomColor: singleFileProject.entry.safeAreaBottomColor,
+                entries: [singleFileProject.entry],
+                defaultEntryID: singleFileProject.entry.id,
+                projectKind: .singleFile,
+                singleFileFormat: singleFileProject.format
+            )
+            page.projectIcon = Self.generatedSingleFileProjectIcon(
+                format: singleFileProject.format,
+                htmlContent: singleFileProject.htmlContent,
+                entryRelativePath: singleFileProject.entry.entryRelativePath,
+                in: destinationFolderURL,
+                fileManager: fileManager
+            )
+            pages.insert(page, at: 0)
+            sortPages()
+            save()
+            return WebPageImportResult(page: page, entry: singleFileProject.entry)
+        }
+
         let entries: [WebPageEntry]
         do {
             entries = try Self.htmlEntries(
                 in: destinationFolderURL,
-                openedAt: Date(),
+                openedAt: now,
                 fallbackArchiveName: Self.sourceFileName(from: sourceURL),
                 fileManager: fileManager
             )
@@ -909,7 +1027,6 @@ final class WebPageLibrary {
             projectFolderURL: destinationFolderURL,
             fileManager: fileManager
         )
-        let now = Date()
         let projectBaseTitle = Self.archiveTitle(
             from: sourceURL,
             defaultEntry: defaultEntry,
@@ -2260,7 +2377,8 @@ final class WebPageLibrary {
         let entry = defaultEntry(for: page)
         let pageFolderURL = folderURL(for: page)
         let icon: WebPageProjectIcon?
-        if page.resolvedProjectKind == .html {
+        if page.resolvedProjectKind == .html ||
+            (page.resolvedProjectKind == .singleFile && page.singleFileFormat == .html) {
             let content = htmlContent ?? Self.htmlContent(
                 for: entry,
                 in: pageFolderURL,
@@ -2271,6 +2389,15 @@ final class WebPageLibrary {
                 from: content,
                 entryRelativePath: entry.entryRelativePath,
                 folderURL: pageFolderURL,
+                fileManager: fileManager,
+                existingIcon: pages[index].projectIcon
+            )
+        } else if page.resolvedProjectKind == .singleFile {
+            icon = Self.generatedSingleFileProjectIcon(
+                format: page.singleFileFormat ?? WebPageSingleFileFormat.format(
+                    for: pageFolderURL.appendingPathComponent(entry.entryRelativePath, isDirectory: false)
+                ),
+                in: pageFolderURL,
                 fileManager: fileManager,
                 existingIcon: pages[index].projectIcon
             )
@@ -2303,28 +2430,38 @@ final class WebPageLibrary {
         try fileManager.copyItem(at: sourceURL, to: entryURL)
     }
 
-    private func restoreNativeFileProjectIfNeeded(forPageAt index: Int, from sourceURL: URL) throws {
+    private func restoreSingleFileProjectIfNeeded(
+        forPageAt index: Int,
+        from sourceURL: URL,
+        format: WebPageSingleFileFormat
+    ) throws {
         guard pages.indices.contains(index) else { return }
         let folderURL = folderURL(for: pages[index])
         let files = Self.archiveProjectFiles(in: folderURL, fileManager: fileManager)
-        guard files.isEmpty else { return }
 
-        try fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true)
-        let fileName = Self.safeImportedFileName(from: sourceURL)
-        let destinationURL = folderURL.appendingPathComponent(fileName, isDirectory: false)
-        if fileManager.fileExists(atPath: destinationURL.path) {
-            try fileManager.removeItem(at: destinationURL)
+        let relativePath: String
+        if files.count == 1 {
+            relativePath = files[0].relativePath
+        } else {
+            relativePath = Self.safeImportedFileName(from: sourceURL)
+            try fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true)
+            let destinationURL = folderURL.appendingPathComponent(relativePath, isDirectory: false)
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                try fileManager.removeItem(at: destinationURL)
+            }
+            try fileManager.copyItem(at: sourceURL, to: destinationURL)
         }
-        try fileManager.copyItem(at: sourceURL, to: destinationURL)
-        let entry = try Self.archiveFallbackEntry(
-            in: folderURL,
-            archiveName: Self.sourceFileName(from: sourceURL) ?? Self.safeImportedFileName(from: sourceURL),
-            openedAt: Date(),
-            fileManager: fileManager
+
+        let entry = Self.singleFileEntry(
+            id: pages[index].defaultEntryID ?? pages[index].id,
+            title: Self.fileProjectTitle(from: sourceURL),
+            relativePath: relativePath,
+            openedAt: Date()
         )
         upsertEntries([entry], forPageAt: index)
-        pages[index].entryRelativePath = entry.entryRelativePath
+        pages[index].entryRelativePath = relativePath
         pages[index].defaultEntryID = entry.id
+        pages[index].singleFileFormat = format
     }
 
     private func restoreArchiveFolder(for page: WebPage, from sourceURL: URL) throws {
@@ -2346,6 +2483,22 @@ final class WebPageLibrary {
             throw WebPageLibraryError.importFileTooLarge
         } catch {
             throw WebPageLibraryError.unableToExtractArchive
+        }
+
+        if Self.preparedSingleFileProject(
+            in: temporaryFolderURL,
+            openedAt: Date(),
+            entryID: page.defaultEntryID ?? page.id,
+            fileManager: fileManager
+        ) != nil {
+            try? WebPageRuntimeStorage.copyRuntimeDirectoryIfPresent(
+                from: folderURL,
+                to: temporaryFolderURL,
+                fileManager: fileManager
+            )
+            try? fileManager.removeItem(at: folderURL)
+            try fileManager.moveItem(at: temporaryFolderURL, to: folderURL)
+            return
         }
 
         let entries: [WebPageEntry]
@@ -3091,6 +3244,62 @@ final class WebPageLibrary {
         }
     }
 
+    private func promoteStoredSingleFileProjectsIfNeeded() {
+        var changed = false
+
+        for index in pages.indices {
+            let folderURL = folderURL(for: pages[index])
+            if promoteStoredSingleFileProject(&pages[index], folderURL: folderURL) {
+                changed = true
+            }
+        }
+
+        for index in recentlyDeletedPages.indices {
+            let folderURL = recoverableFolderURL(for: recentlyDeletedPages[index])
+            if promoteStoredSingleFileProject(&recentlyDeletedPages[index].page, folderURL: folderURL) {
+                changed = true
+            }
+        }
+
+        if changed {
+            sortPages()
+            sortRecentlyDeletedPages()
+            save(shouldRebuildSearchIndex: false)
+        }
+    }
+
+    private func promoteStoredSingleFileProject(_ page: inout WebPage, folderURL: URL) -> Bool {
+        guard page.resolvedProjectKind == .nativeFileArchive,
+              let singleFileProject = Self.preparedSingleFileProject(
+                  in: folderURL,
+                  openedAt: page.lastOpenedAt,
+                  entryID: page.defaultEntryID ?? page.id,
+                  fileManager: fileManager
+              ) else {
+            return false
+        }
+
+        page.projectKind = .singleFile
+        page.singleFileFormat = singleFileProject.format
+        page.entryRelativePath = singleFileProject.entry.entryRelativePath
+        page.entries = [singleFileProject.entry]
+        page.defaultEntryID = singleFileProject.entry.id
+        page.safeAreaTopColor = singleFileProject.entry.safeAreaTopColor
+        page.safeAreaBottomColor = singleFileProject.entry.safeAreaBottomColor
+        if page.projectIcon?.source != .custom {
+            page.projectIcon = Self.generatedSingleFileProjectIcon(
+                format: singleFileProject.format,
+                htmlContent: singleFileProject.htmlContent,
+                entryRelativePath: singleFileProject.entry.entryRelativePath,
+                in: folderURL,
+                fileManager: fileManager,
+                existingIcon: page.projectIcon
+            )
+        }
+        page.updatedAt = page.updatedAt ?? Date()
+        return true
+    }
+
     private func save(shouldRebuildSearchIndex: Bool = true) {
         do {
             try ensureStorage()
@@ -3128,7 +3337,7 @@ final class WebPageLibrary {
             return ProjectWidgetProject(
                 id: page.id,
                 title: page.title,
-                kind: page.opensInNativeFileViewer ? .nativeFileArchive : .html,
+                kind: projectWidgetKind(for: page),
                 loadStatus: loadStatus,
                 isOpenable: isOpenable,
                 usesCustomIcon: usesCustomIcon,
@@ -3153,15 +3362,30 @@ final class WebPageLibrary {
         }
     }
 
+    private func projectWidgetKind(for page: WebPage) -> ProjectWidgetProjectKind {
+        switch page.resolvedProjectKind {
+        case .html:
+            return .html
+        case .singleFile:
+            return .singleFile
+        case .nativeFileArchive:
+            return .nativeFileArchive
+        }
+    }
+
     private func projectWidgetLoadStatus(
         for page: WebPage,
         defaultEntry: WebPageEntry
     ) -> ProjectWidgetLoadStatus {
-        let status = page.opensInNativeFileViewer ? page.lastLoadStatus : defaultEntry.lastLoadStatus
+        let status = page.opensInNativeFileViewer || page.opensInSingleFilePreview ? page.lastLoadStatus : defaultEntry.lastLoadStatus
         return ProjectWidgetLoadStatus(rawValue: status.rawValue) ?? .failed
     }
 
     private func projectWidgetFallbackSymbolName(for page: WebPage) -> String {
+        if page.resolvedProjectKind == .singleFile {
+            return projectWidgetSingleFileFallbackSymbolName(for: page.singleFileFormat)
+        }
+
         if page.opensInNativeFileViewer {
             return "doc.fill"
         }
@@ -3171,6 +3395,27 @@ final class WebPageLibrary {
         }
 
         return "doc.text.fill"
+    }
+
+    private func projectWidgetSingleFileFallbackSymbolName(for format: WebPageSingleFileFormat?) -> String {
+        switch format {
+        case .html:
+            return "doc.text.fill"
+        case .markdown:
+            return "text.document.fill"
+        case .image:
+            return "photo.fill"
+        case .video:
+            return "film.fill"
+        case .audio:
+            return "waveform"
+        case .pdf:
+            return "doc.richtext.fill"
+        case .text:
+            return "doc.plaintext.fill"
+        case .document, .file, nil:
+            return "doc.fill"
+        }
     }
 
     private func copyProjectWidgetIcon(for page: WebPage) -> String? {
@@ -3382,12 +3627,19 @@ final class WebPageLibrary {
         return sortedEntriesForDisplay(uniqueEntries)
     }
 
-    private static let archiveFallbackIndexDataFileName = ".htmlanywhere-file-index.json"
-    private static let archiveFallbackEntryRelativePath = ".htmlanywhere-bundled-file-list.html"
+    nonisolated private static let archiveFallbackIndexDataFileName = ".htmlanywhere-file-index.json"
+    nonisolated private static let archiveFallbackEntryRelativePath = ".htmlanywhere-bundled-file-list.html"
 
     private struct ArchiveFallbackFile {
         var relativePath: String
         var byteCount: Int64
+    }
+
+    private struct PreparedSingleFileProject {
+        var file: WebPageProjectFile
+        var format: WebPageSingleFileFormat
+        var entry: WebPageEntry
+        var htmlContent: String?
     }
 
     private struct ArchiveFallbackIndex: Encodable {
@@ -3482,6 +3734,57 @@ final class WebPageLibrary {
         }
     }
 
+    private static func preparedSingleFileProject(
+        in folderURL: URL,
+        openedAt: Date,
+        entryID: WebPageEntry.ID = UUID(),
+        fileManager: FileManager
+    ) -> PreparedSingleFileProject? {
+        let files = archiveProjectFiles(in: folderURL, fileManager: fileManager)
+        guard files.count == 1, let file = files.first else {
+            return nil
+        }
+
+        let fileURL = folderURL.appendingPathComponent(file.relativePath, isDirectory: false)
+        let format = WebPageSingleFileFormat.format(for: fileURL, typeIdentifier: file.typeIdentifier)
+        let displayTitle: String
+        let htmlContent: String?
+        let topColor: String?
+        let bottomColor: String?
+
+        if format == .html, let content = try? String(contentsOf: fileURL, encoding: .utf8) {
+            htmlContent = content
+            displayTitle = title(from: content, fallbackURL: fileURL)
+            let colors = BackgroundColorExtractor.extractColors(
+                from: content,
+                htmlFileURL: fileURL,
+                projectFolderURL: folderURL,
+                fileManager: fileManager
+            )
+            topColor = colors.top
+            bottomColor = colors.bottom
+        } else {
+            htmlContent = nil
+            displayTitle = fileProjectTitle(from: fileURL)
+            topColor = nil
+            bottomColor = nil
+        }
+
+        return PreparedSingleFileProject(
+            file: file,
+            format: format,
+            entry: singleFileEntry(
+                id: entryID,
+                title: displayTitle,
+                relativePath: file.relativePath,
+                openedAt: openedAt,
+                safeAreaTopColor: topColor,
+                safeAreaBottomColor: bottomColor
+            ),
+            htmlContent: htmlContent
+        )
+    }
+
     private static func hasFixedResourceFiles(in folderURL: URL, fileManager: FileManager) -> Bool {
         !archiveProjectFiles(in: folderURL, fileManager: fileManager).isEmpty
     }
@@ -3495,11 +3798,15 @@ final class WebPageLibrary {
         }
     }
 
-    private static func isAppManagedFallbackPath(_ relativePath: String) -> Bool {
+    nonisolated private static func isAppManagedFallbackPath(_ relativePath: String) -> Bool {
         relativePath == archiveFallbackEntryRelativePath ||
             relativePath == archiveFallbackIndexDataFileName ||
             relativePath == WebPageRuntimeStorage.directoryName ||
             relativePath.hasPrefix("\(WebPageRuntimeStorage.directoryName)/")
+    }
+
+    nonisolated static func isAppManagedProjectFilePath(_ relativePath: String) -> Bool {
+        isAppManagedFallbackPath(relativePath)
     }
 
     static func bundledArchiveFallbackTemplateURL() -> URL? {
@@ -3535,6 +3842,25 @@ final class WebPageLibrary {
         }
         let entryURL = folderURL.appendingPathComponent(entry.entryRelativePath, isDirectory: false)
         return try? String(contentsOf: entryURL, encoding: .utf8)
+    }
+
+    private static func singleFileEntry(
+        id: WebPageEntry.ID = UUID(),
+        title: String,
+        relativePath: String,
+        openedAt: Date,
+        safeAreaTopColor: String? = nil,
+        safeAreaBottomColor: String? = nil
+    ) -> WebPageEntry {
+        WebPageEntry(
+            id: id,
+            title: title,
+            entryRelativePath: relativePath,
+            lastOpenedAt: openedAt,
+            lastLoadStatus: .ready,
+            safeAreaTopColor: safeAreaTopColor,
+            safeAreaBottomColor: safeAreaBottomColor
+        )
     }
 
     private static func percentEncodedRelativeHref(_ relativePath: String) -> String {
@@ -3761,6 +4087,36 @@ final class WebPageLibrary {
 
         cleanupProjectIconFiles(in: folderURL, keeping: nil, fileManager: fileManager)
         return nil
+    }
+
+    private static func generatedSingleFileProjectIcon(
+        format: WebPageSingleFileFormat,
+        htmlContent: String? = nil,
+        entryRelativePath: String? = nil,
+        in folderURL: URL,
+        fileManager: FileManager,
+        existingIcon: WebPageProjectIcon? = nil
+    ) -> WebPageProjectIcon? {
+        switch format {
+        case .html:
+            guard let htmlContent, let entryRelativePath else { return nil }
+            return generatedProjectIcon(
+                from: htmlContent,
+                entryRelativePath: entryRelativePath,
+                folderURL: folderURL,
+                fileManager: fileManager,
+                existingIcon: existingIcon
+            )
+        case .image:
+            return generatedProjectImageIcon(
+                in: folderURL,
+                fileManager: fileManager,
+                existingIcon: existingIcon
+            )
+        case .markdown, .video, .audio, .pdf, .text, .document, .file:
+            cleanupProjectIconFiles(in: folderURL, keeping: nil, fileManager: fileManager)
+            return nil
+        }
     }
 
     private static func normalizedProjectIcon(

@@ -1686,9 +1686,6 @@ struct WebPageWebView: UIViewRepresentable {
     }
 
     private func load(in webView: WKWebView) {
-        DispatchQueue.main.async {
-            onLoadStateChange(.loading)
-        }
         if let coordinator = webView.navigationDelegate as? Coordinator {
             coordinator.loadedEntryURL = entryURL
             coordinator.reloadToken = reloadToken

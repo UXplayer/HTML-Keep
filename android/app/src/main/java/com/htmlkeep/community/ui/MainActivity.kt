@@ -1907,7 +1907,7 @@ class MainActivity : Activity() {
             val shareFile = ShareExporter(File(cacheDir, "shares")).shareFileForProject(library.folderFor(page), page.title)
             val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", shareFile.file)
             val intent = Intent(Intent.ACTION_SEND).apply {
-                type = if (shareFile.isArchive) "application/zip" else "text/html"
+                type = if (shareFile.isArchive) "application/zip" else mimeTypeForFile(shareFile.file)
                 putExtra(Intent.EXTRA_STREAM, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
