@@ -53,6 +53,8 @@
 		200000000000000000000146 /* Features/ProEntitlement/Models/ProEntitlementModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000282 /* Features/ProEntitlement/Models/ProEntitlementModels.swift */; };
 		200000000000000000000147 /* Features/DebugTools/DebugToolsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000283 /* Features/DebugTools/DebugToolsPage.swift */; };
 		200000000000000000000148 /* Features/AgentImport/AgentImportSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000284 /* Features/AgentImport/AgentImportSession.swift */; };
+		200000000000000000000149 /* Features/Viewer/ViewerViewportBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000285 /* Features/Viewer/ViewerViewportBackground.swift */; };
+		200000000000000000000150 /* Features/Viewer/WebPageWebViewScripts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000286 /* Features/Viewer/WebPageWebViewScripts.swift */; };
 		300000000000000000000001 /* SideMenu in Frameworks */ = {isa = PBXBuildFile; productRef = 300000000000000000000002 /* SideMenu */; };
 		300000000000000000000004 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = 300000000000000000000005 /* MarkdownUI */; };
 		400000000000000000000101 /* ProjectWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 400000000000000000000201 /* ProjectWidget.swift */; };
@@ -166,6 +168,8 @@
 		200000000000000000000282 /* Features/ProEntitlement/Models/ProEntitlementModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/ProEntitlement/Models/ProEntitlementModels.swift; sourceTree = "<group>"; };
 		200000000000000000000283 /* Features/DebugTools/DebugToolsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/DebugTools/DebugToolsPage.swift; sourceTree = "<group>"; };
 		200000000000000000000284 /* Features/AgentImport/AgentImportSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/AgentImport/AgentImportSession.swift; sourceTree = "<group>"; };
+		200000000000000000000285 /* Features/Viewer/ViewerViewportBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/ViewerViewportBackground.swift; sourceTree = "<group>"; };
+		200000000000000000000286 /* Features/Viewer/WebPageWebViewScripts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Viewer/WebPageWebViewScripts.swift; sourceTree = "<group>"; };
 		400000000000000000000201 /* ProjectWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectWidget.swift; sourceTree = "<group>"; };
 		400000000000000000000202 /* Shared/ProjectWidgetShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/ProjectWidgetShared.swift; sourceTree = "<group>"; };
 		400000000000000000000203 /* HTMLKeepWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HTMLKeepWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -242,6 +246,8 @@
 				200000000000000000000209 /* Features/Viewer/HTMLViewerView.swift */,
 				200000000000000000000256 /* Features/Viewer/NativeFileViewerView.swift */,
 				200000000000000000000210 /* Features/Viewer/WebPageWebView.swift */,
+				200000000000000000000286 /* Features/Viewer/WebPageWebViewScripts.swift */,
+				200000000000000000000285 /* Features/Viewer/ViewerViewportBackground.swift */,
 				200000000000000000000222 /* Features/Viewer/WebPageRuntimeStorage.swift */,
 				200000000000000000000211 /* Features/Viewer/BackgroundColorExtractor.swift */,
 				200000000000000000000212 /* Features/Sync/ICloudWebPageSyncService.swift */,
@@ -456,6 +462,8 @@
 				200000000000000000000107 /* Features/Viewer/HTMLViewerView.swift in Sources */,
 				200000000000000000000121 /* Features/Viewer/NativeFileViewerView.swift in Sources */,
 				200000000000000000000108 /* Features/Viewer/WebPageWebView.swift in Sources */,
+				200000000000000000000150 /* Features/Viewer/WebPageWebViewScripts.swift in Sources */,
+				200000000000000000000149 /* Features/Viewer/ViewerViewportBackground.swift in Sources */,
 				200000000000000000000115 /* Features/Viewer/WebPageRuntimeStorage.swift in Sources */,
 				200000000000000000000109 /* Features/Viewer/BackgroundColorExtractor.swift in Sources */,
 				200000000000000000000110 /* Features/Sync/ICloudWebPageSyncService.swift in Sources */,
