@@ -488,6 +488,16 @@
 "这次购买没有返回可识别的结果，请稍后再试。" = "Cet achat n'a pas donné de résultat reconnaissable. Veuillez réessayer plus tard.";
 "年度 Pro" = "Membre annuel";
 "月度 Pro" = "Membre mensuel";
+
+"HTML Keep 社区版" = "HTML Keep Community";
+"本地高级功能已开放" = "Les fonctionnalités Pro locales sont déverrouillées";
+"查看社区版说明" = "Voir les détails de la version Community";
+"本地功能已开放，不代表官方 Pro 权益，也不包含官方 iCloud 同步。" = "Les fonctionnalités locales sont déverrouillées. Cela ne correspond pas aux avantages Pro officiels et n’inclut pas la synchronisation iCloud officielle.";
+"社区版" = "Community";
+"社区版已开放" = "Version Community déverrouillée";
+"社区版未启用官方 iCloud 同步" = "La synchronisation iCloud officielle n’est pas activée dans la version Community";
+"社区版不包含 HTML Keep 官方 iCloud 同步服务。" = "La version Community n’inclut pas le service officiel de synchronisation iCloud de HTML Keep.";
+"没有可清理的官方 iCloud 同步环境。" = "Aucun environnement de synchronisation iCloud officiel à nettoyer.";
 "永久 Pro" = "Membre à vie";
 "限时永久 Pro" = "Membre à vie - Offre spéciale";
 "立即订阅" = "Abonnez-vous maintenant";
@@ -530,7 +540,7 @@
 "立即领取" = "Réclamez maintenant";
 "限时优惠已结束" = "Offre à durée limitée terminée";
 "限时优惠即将结束" = "Offre à durée limitée se terminant bientôt";
-"永久 Pro已开通。" = "L'adhésion à vie est active.";
+"永久 Pro 权益已开通。" = "L'adhésion à vie est active.";
 "购买请求已提交，正在等待系统确认。" = "Demande d'achat soumise. En attente de confirmation.";
 "已开通" = "Actif";
 "正在恢复…" = "Restauration...";

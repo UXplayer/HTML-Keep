@@ -67,13 +67,7 @@ struct HTMLViewerView: View {
             }
 
             if isLoadingIndicatorVisible, entryExists {
-                VStack {
-                    ProgressView()
-                        .padding(12)
-                        .background(.thinMaterial, in: Capsule())
-                        .padding(.top, 12)
-                    Spacer()
-                }
+                loadingIndicatorOverlay
             }
 
             if isPhoneLandscape {
@@ -272,6 +266,12 @@ struct HTMLViewerView: View {
 
     private var isPhoneLandscape: Bool {
         UIDevice.current.userInterfaceIdiom == .phone && verticalSizeClass == .compact
+    }
+
+    private var loadingIndicatorOverlay: some View {
+        ProgressView()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .allowsHitTesting(false)
     }
 
     private var usesTopSafeAreaWebLayout: Bool {
