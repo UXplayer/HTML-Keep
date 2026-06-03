@@ -2,3 +2,8 @@
 "CFBundleName" = "HTML Keep CE";
 "CFBundleTypeName" = "HTML दस्तावेज़";
 "NSLocalNetworkUsageDescription" = "HTML Keep लोकल नेटवर्क का उपयोग केवल तब करता है जब आप Agent प्रबंधन शुरू करते हैं, ताकि आपके कंप्यूटर का Agent इस डिवाइस के पेज प्रबंधित कर सके।";
+"NSCameraUsageDescription" = "HTML Keep कैमरा केवल तब इस्तेमाल करता है जब आपके द्वारा खोला गया कोई पेज फ़ोटो या वीडियो कैप्चर करने को कहता है।";
+"NSMicrophoneUsageDescription" = "HTML Keep माइक्रोफ़ोन केवल तब इस्तेमाल करता है जब आपके द्वारा खोला गया कोई पेज ऑडियो कैप्चर करने को कहता है।";
+"NSPhotoLibraryUsageDescription" = "HTML Keep फ़ोटो लाइब्रेरी केवल तब इस्तेमाल करता है जब आपके द्वारा खोला गया कोई पेज फ़ोटो या वीडियो चुनने को कहता है।";
+"NSLocationWhenInUseUsageDescription" = "HTML Keep आपका स्थान केवल तब इस्तेमाल करता है जब आपके द्वारा खोला गया कोई पेज ऐप इस्तेमाल करते समय इसकी मांग करता है।";
+"NSMotionUsageDescription" = "HTML Keep डिवाइस मोशन केवल तब इस्तेमाल करता है जब आपके द्वारा खोला गया कोई पेज मोशन या ओरिएंटेशन डेटा मांगता है।";

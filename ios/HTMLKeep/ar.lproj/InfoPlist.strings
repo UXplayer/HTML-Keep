@@ -2,3 +2,8 @@
 "CFBundleName" = "HTML Keep CE";
 "CFBundleTypeName" = "مستند HTML";
 "NSLocalNetworkUsageDescription" = "يستخدم HTML Keep الشبكة المحلية فقط عند بدء إدارة Agent، حتى يتمكن Agent على الكمبيوتر من إدارة الصفحات على هذا الجهاز.";
+"NSCameraUsageDescription" = "يستخدم HTML Keep الكاميرا فقط عندما تطلب صفحة فتحتها التقاط صورة أو فيديو.";
+"NSMicrophoneUsageDescription" = "يستخدم HTML Keep الميكروفون فقط عندما تطلب صفحة فتحتها التقاط صوت.";
+"NSPhotoLibraryUsageDescription" = "يستخدم HTML Keep مكتبة الصور فقط عندما تطلب صفحة فتحتها اختيار صورة أو فيديو.";
+"NSLocationWhenInUseUsageDescription" = "يستخدم HTML Keep موقعك فقط عندما تطلبه صفحة فتحتها أثناء استخدام التطبيق.";
+"NSMotionUsageDescription" = "يستخدم HTML Keep حركة الجهاز فقط عندما تطلب صفحة فتحتها بيانات الحركة أو الاتجاه.";

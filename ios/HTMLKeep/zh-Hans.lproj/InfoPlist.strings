@@ -2,3 +2,8 @@
 "CFBundleName" = "随手网页 社区版";
 "CFBundleTypeName" = "HTML 文档";
 "NSLocalNetworkUsageDescription" = "随手网页只会在你开启 Agent 管理时使用本地网络，让电脑上的 Agent 管理这台设备里的网页。";
+"NSCameraUsageDescription" = "随手网页只会在你打开的网页请求拍摄照片或视频时使用相机。";
+"NSMicrophoneUsageDescription" = "随手网页只会在你打开的网页请求采集声音时使用麦克风。";
+"NSPhotoLibraryUsageDescription" = "随手网页只会在你打开的网页请求选择照片或视频时使用照片图库。";
+"NSLocationWhenInUseUsageDescription" = "随手网页只会在你打开的网页于 App 使用期间请求定位时使用你的位置。";
+"NSMotionUsageDescription" = "随手网页只会在你打开的网页请求运动或方向数据时使用设备运动信息。";

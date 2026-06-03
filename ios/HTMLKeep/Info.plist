@@ -67,6 +67,16 @@
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>HTML Keep uses the local network only when you start Computer Publishing, so your computer can send generated pages to this device.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>HTML Keep uses the camera only when a page you open asks to capture an image or video.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>HTML Keep uses the microphone only when a page you open asks to capture audio.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>HTML Keep uses the photo library only when a page you open asks you to choose a photo or video.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>HTML Keep uses your location only when a page you open asks for it while the app is open.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>HTML Keep uses device motion only when a page you open asks for motion or orientation data.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_htmlanywhere._tcp</string>

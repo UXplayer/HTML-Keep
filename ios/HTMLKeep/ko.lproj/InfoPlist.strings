@@ -2,3 +2,8 @@
 "CFBundleName" = "HTML Keep CE";
 "CFBundleTypeName" = "HTML 문서";
 "NSLocalNetworkUsageDescription" = "HTML Keep은 Agent 관리를 시작할 때만 로컬 네트워크를 사용하여, 컴퓨터의 Agent가 이 기기의 페이지를 관리할 수 있게 합니다.";
+"NSCameraUsageDescription" = "HTML Keep은 사용자가 연 페이지에서 사진이나 동영상 촬영을 요청할 때만 카메라를 사용합니다.";
+"NSMicrophoneUsageDescription" = "HTML Keep은 사용자가 연 페이지에서 오디오 녹음을 요청할 때만 마이크를 사용합니다.";
+"NSPhotoLibraryUsageDescription" = "HTML Keep은 사용자가 연 페이지에서 사진이나 동영상 선택을 요청할 때만 사진 보관함을 사용합니다.";
+"NSLocationWhenInUseUsageDescription" = "HTML Keep은 사용자가 연 페이지에서 앱 사용 중 위치를 요청할 때만 사용자의 위치를 사용합니다.";
+"NSMotionUsageDescription" = "HTML Keep은 사용자가 연 페이지에서 동작 또는 방향 데이터를 요청할 때만 기기 동작 정보를 사용합니다.";

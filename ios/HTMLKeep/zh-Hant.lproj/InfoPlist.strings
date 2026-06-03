@@ -2,3 +2,8 @@
 "CFBundleName" = "隨手網頁 社區版";
 "CFBundleTypeName" = "HTML 文件";
 "NSLocalNetworkUsageDescription" = "隨手網頁只會在你開啟 Agent 管理時使用本機網路，讓電腦上的 Agent 管理這台裝置裡的網頁。";
+"NSCameraUsageDescription" = "隨手網頁只會在你打開的網頁要求拍攝照片或影片時使用相機。";
+"NSMicrophoneUsageDescription" = "隨手網頁只會在你打開的網頁要求擷取聲音時使用麥克風。";
+"NSPhotoLibraryUsageDescription" = "隨手網頁只會在你打開的網頁要求選擇照片或影片時使用照片圖庫。";
+"NSLocationWhenInUseUsageDescription" = "隨手網頁只會在你打開的網頁於 App 使用期間要求定位時使用你的位置。";
+"NSMotionUsageDescription" = "隨手網頁只會在你打開的網頁要求運動或方向資料時使用裝置運動資訊。";

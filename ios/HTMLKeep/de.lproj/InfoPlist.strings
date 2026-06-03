@@ -2,3 +2,8 @@
 "CFBundleName" = "HTML Keep CE";
 "CFBundleTypeName" = "HTML-Dokument";
 "NSLocalNetworkUsageDescription" = "HTML Keep verwendet das lokale Netzwerk nur, wenn du Agent-Verwaltung startest, damit ein Agent auf deinem Computer die Seiten auf diesem Gerät verwalten kann.";
+"NSCameraUsageDescription" = "HTML Keep verwendet die Kamera nur, wenn eine von dir geöffnete Seite ein Foto oder Video aufnehmen möchte.";
+"NSMicrophoneUsageDescription" = "HTML Keep verwendet das Mikrofon nur, wenn eine von dir geöffnete Seite Audio aufnehmen möchte.";
+"NSPhotoLibraryUsageDescription" = "HTML Keep verwendet die Fotomediathek nur, wenn eine von dir geöffnete Seite ein Foto oder Video auswählen möchte.";
+"NSLocationWhenInUseUsageDescription" = "HTML Keep verwendet deinen Standort nur, wenn eine von dir geöffnete Seite ihn während der Nutzung der App anfragt.";
+"NSMotionUsageDescription" = "HTML Keep verwendet Gerätebewegung nur, wenn eine von dir geöffnete Seite Bewegungs- oder Ausrichtungsdaten anfragt.";
