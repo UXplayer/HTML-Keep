@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "لا تزال خيارات شراء Pro قيد التحميل. حاول مرة أخرى بعد قليل.";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "خيارات شراء Pro غير متاحة حاليًا. حاول مرة أخرى لاحقًا.";
 "重新播放" = "تشغيل مرة أخرى";
+
+"年度会员" = "Pro سنوي";
+"月度会员" = "Pro شهري";
+"永久会员" = "Pro مدى الحياة";
+"限时永久会员" = "Pro مدى الحياة لفترة محدودة";

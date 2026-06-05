@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Pro কেনার অপশনগুলো এখনও লোড হচ্ছে। একটু পরে আবার চেষ্টা করুন।";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "Pro কেনার অপশনগুলো এখন উপলভ্য নয়। পরে আবার চেষ্টা করুন।";
 "重新播放" = "আবার চালান";
+
+"年度会员" = "বার্ষিক Pro";
+"月度会员" = "মাসিক Pro";
+"永久会员" = "লাইফটাইম Pro";
+"限时永久会员" = "সীমিত সময়ের লাইফটাইম Pro";

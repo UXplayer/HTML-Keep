@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Le opzioni di acquisto Pro sono ancora in caricamento. Riprova tra poco.";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "Le opzioni di acquisto Pro non sono disponibili al momento. Riprova più tardi.";
 "重新播放" = "Riproduci di nuovo";
+
+"年度会员" = "Pro annuale";
+"月度会员" = "Pro mensile";
+"永久会员" = "Pro a vita";
+"限时永久会员" = "Pro a vita a tempo limitato";

@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Pro 구매 옵션을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "지금은 Pro 구매 옵션을 사용할 수 없습니다. 나중에 다시 시도해 주세요.";
 "重新播放" = "다시 재생";
+
+"年度会员" = "연간 Pro";
+"月度会员" = "월간 Pro";
+"永久会员" = "평생 Pro";
+"限时永久会员" = "기간 한정 평생 Pro";

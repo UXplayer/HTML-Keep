@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Pro खरीद विकल्प अभी लोड हो रहे हैं. कृपया कुछ देर बाद फिर कोशिश करें.";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "Pro खरीद विकल्प अभी उपलब्ध नहीं हैं. कृपया बाद में फिर कोशिश करें.";
 "重新播放" = "फिर से चलाएँ";
+
+"年度会员" = "वार्षिक Pro";
+"月度会员" = "मासिक Pro";
+"永久会员" = "लाइफटाइम Pro";
+"限时永久会员" = "सीमित समय वाला लाइफटाइम Pro";

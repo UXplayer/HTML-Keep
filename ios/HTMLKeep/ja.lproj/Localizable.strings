@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Proの購入オプションを読み込み中です。少し待ってからもう一度お試しください。";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "Proの購入オプションは現在利用できません。あとでもう一度お試しください。";
 "重新播放" = "もう一度再生";
+
+"年度会员" = "年間Pro";
+"月度会员" = "月間Pro";
+"永久会员" = "永久Pro";
+"限时永久会员" = "期間限定永久Pro";

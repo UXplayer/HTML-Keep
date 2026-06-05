@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Pro خریداری کے اختیارات ابھی لوڈ ہو رہے ہیں۔ کچھ دیر بعد دوبارہ کوشش کریں۔";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "Pro خریداری کے اختیارات فی الحال دستیاب نہیں ہیں۔ بعد میں دوبارہ کوشش کریں۔";
 "重新播放" = "دوبارہ چلائیں";
+
+"年度会员" = "سالانہ Pro";
+"月度会员" = "ماہانہ Pro";
+"永久会员" = "لائف ٹائم Pro";
+"限时永久会员" = "محدود وقت کا لائف ٹائم Pro";

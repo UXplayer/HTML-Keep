@@ -603,3 +603,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "De Pro-aankoopopties worden nog geladen. Probeer het zo opnieuw.";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "De Pro-aankoopopties zijn nu niet beschikbaar. Probeer het later opnieuw.";
 "重新播放" = "Opnieuw afspelen";
+
+"年度会员" = "Pro jaarlijks";
+"月度会员" = "Pro maandelijks";
+"永久会员" = "Pro levenslang";
+"限时永久会员" = "Pro levenslang tijdelijk";

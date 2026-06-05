@@ -602,3 +602,8 @@
 "proEntitlement.storeKit.loadingCatalogMessage" = "Pro 商品資訊正在載入，請稍後再試。";
 "proEntitlement.storeKit.productLoadUnavailableMessage" = "Pro 商品資訊暫時沒有載入出來，請稍後再試。";
 "重新播放" = "重新播放";
+
+"年度会员" = "年度會員";
+"月度会员" = "月度會員";
+"永久会员" = "永久會員";
+"限时永久会员" = "限時永久會員";
