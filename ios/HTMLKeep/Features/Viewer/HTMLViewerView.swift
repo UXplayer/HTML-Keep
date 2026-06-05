@@ -22,7 +22,9 @@ struct HTMLViewerView: View {
     @State private var isLoadingIndicatorVisible = false
     @State private var loadingIndicatorID: UUID?
     @State private var reloadToken = UUID()
+    @State private var webPageZoomIndex = ViewerZoomScale.defaultIndex
     @State private var isActionsPopoverPresented = false
+    @State private var presentedViewerSheet: ViewerPresentedSheet?
     @State private var sharePayload: SharePayload?
     @State private var isPreparingShare = false
     @State private var isSharePreparationOverlayVisible = false
@@ -51,6 +53,7 @@ struct HTMLViewerView: View {
                     entryHTML: entryHTML,
                     readAccessURL: folderURL,
                     reloadToken: reloadToken,
+                    pageZoom: ViewerZoomScale.pageZoom(for: webPageZoomIndex),
                     onLoadStateChange: handleLoadStateChange,
                     onRequestDismiss: dismissViewer,
                     onRuntimeStorageChange: onRuntimeStorageChanged,
@@ -110,6 +113,12 @@ struct HTMLViewerView: View {
         )
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(activityItems: [payload.url])
+        }
+        .sheet(item: $presentedViewerSheet) { sheet in
+            switch sheet {
+            case .zoom:
+                ViewerZoomSheet(zoomIndex: $webPageZoomIndex)
+            }
         }
         .alert(
             AppStrings.localized("无法准备分享文件"),
@@ -321,6 +330,16 @@ struct HTMLViewerView: View {
             ) {
                 isActionsPopoverPresented = false
                 reloadToken = UUID()
+            }
+            Divider()
+                .padding(.leading, 52)
+
+            ViewerActionPopoverRow(
+                title: AppStrings.localized("缩放"),
+                systemImage: "plus.magnifyingglass"
+            ) {
+                isActionsPopoverPresented = false
+                startShowingZoomSheetAfterActionsPopoverDismiss()
             }
             Divider()
                 .padding(.leading, 52)
@@ -562,6 +581,12 @@ struct HTMLViewerView: View {
         }
     }
 
+    private func startShowingZoomSheetAfterActionsPopoverDismiss() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            presentedViewerSheet = .zoom
+        }
+    }
+
     private func startClearingCacheAfterActionsPopoverDismiss() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             isClearCacheAlertPresented = true
@@ -650,6 +675,269 @@ struct HTMLViewerView: View {
         let trimmedPath = relativePath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let prefix = trimmedPath.isEmpty ? "" : "\(trimmedPath)/"
         return directoryEntryFileNames.map { "\(prefix)\($0)" }
+    }
+}
+
+private enum ViewerPresentedSheet: Identifiable {
+    case zoom
+
+    var id: String {
+        switch self {
+        case .zoom:
+            return "zoom"
+        }
+    }
+}
+
+private enum ViewerZoomScale {
+    static let percentages = [
+        25, 33, 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300
+    ]
+    static let defaultPercentage = 100
+    static let defaultIndex = percentages.firstIndex(of: defaultPercentage) ?? 7
+    static var maximumIndex: Int { percentages.count - 1 }
+
+    static func clampedIndex(_ index: Int) -> Int {
+        min(max(index, 0), maximumIndex)
+    }
+
+    static func percentage(for index: Int) -> Int {
+        percentages[clampedIndex(index)]
+    }
+
+    static func pageZoom(for index: Int) -> CGFloat {
+        CGFloat(percentage(for: index)) / 100
+    }
+
+    static func accessibilityValue(for index: Int) -> String {
+        "\(percentage(for: index))%"
+    }
+}
+
+private struct ViewerZoomSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var measuredContentHeight: CGFloat = 92
+    @Binding var zoomIndex: Int
+
+    private let sheetChromeAllowance: CGFloat = 64
+    private let minimumSheetHeight: CGFloat = 168
+
+    private var sliderValue: Binding<Double> {
+        Binding {
+            Double(zoomIndex)
+        } set: { newValue in
+            zoomIndex = ViewerZoomScale.clampedIndex(Int(newValue.rounded()))
+        }
+    }
+
+    private var canReset: Bool {
+        zoomIndex != ViewerZoomScale.defaultIndex
+    }
+
+    private var canDecrease: Bool {
+        zoomIndex > 0
+    }
+
+    private var canIncrease: Bool {
+        zoomIndex < ViewerZoomScale.maximumIndex
+    }
+
+    private var sheetHeight: CGFloat {
+        max(minimumSheetHeight, measuredContentHeight + sheetChromeAllowance)
+    }
+
+    private var systemDefaultTextColor: Color {
+        Color(uiColor: .label)
+    }
+
+    var body: some View {
+        NavigationStack {
+            zoomControl
+            .navigationTitle(AppStrings.localized("缩放"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    resetButton
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    closeButton
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .presentationDetents([.height(sheetHeight)])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var zoomControl: some View {
+        HStack(spacing: 16) {
+            Button {
+                decrease()
+            } label: {
+                Image(systemName: "minus.magnifyingglass")
+            }
+            .disabled(!canDecrease)
+            .buttonStyle(.plain)
+            .foregroundStyle(systemDefaultTextColor)
+            .accessibilityLabel(AppStrings.localized("缩小"))
+
+            zoomSlider
+
+            Button {
+                increase()
+            } label: {
+                Image(systemName: "plus.magnifyingglass")
+            }
+            .disabled(!canIncrease)
+            .buttonStyle(.plain)
+            .foregroundStyle(systemDefaultTextColor)
+            .accessibilityLabel(AppStrings.localized("放大"))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 24)
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: ViewerZoomControlHeightKey.self,
+                    value: proxy.size.height
+                )
+            }
+        )
+        .onPreferenceChange(ViewerZoomControlHeightKey.self) { contentHeight in
+            updateMeasuredContentHeight(contentHeight)
+        }
+    }
+
+    @ViewBuilder
+    private var zoomSlider: some View {
+        if #available(iOS 26.0, *) {
+            ViewerZoomTickedSlider(
+                zoomIndex: $zoomIndex,
+                tintColor: .label
+            )
+            .accessibilityLabel(AppStrings.localized("缩放"))
+            .accessibilityValue(ViewerZoomScale.accessibilityValue(for: zoomIndex))
+        } else {
+            Slider(
+                value: sliderValue,
+                in: 0...Double(ViewerZoomScale.maximumIndex),
+                step: 1
+            )
+            .tint(systemDefaultTextColor)
+            .accessibilityLabel(AppStrings.localized("缩放"))
+            .accessibilityValue(ViewerZoomScale.accessibilityValue(for: zoomIndex))
+        }
+    }
+
+    private var resetButton: some View {
+        Button(AppStrings.localized("重置")) {
+            reset()
+        }
+        .disabled(!canReset)
+        .foregroundStyle(systemDefaultTextColor)
+    }
+
+    private var closeButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
+        }
+        .foregroundStyle(systemDefaultTextColor)
+        .accessibilityLabel(AppStrings.localized("关闭"))
+    }
+
+    private func decrease() {
+        zoomIndex = ViewerZoomScale.clampedIndex(zoomIndex - 1)
+    }
+
+    private func increase() {
+        zoomIndex = ViewerZoomScale.clampedIndex(zoomIndex + 1)
+    }
+
+    private func reset() {
+        zoomIndex = ViewerZoomScale.defaultIndex
+    }
+
+    private func updateMeasuredContentHeight(_ contentHeight: CGFloat) {
+        guard contentHeight > 0 else { return }
+        guard abs(measuredContentHeight - contentHeight) > 1 else { return }
+        measuredContentHeight = contentHeight
+    }
+}
+
+private struct ViewerZoomControlHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+@available(iOS 26.0, *)
+private struct ViewerZoomTickedSlider: UIViewRepresentable {
+    @Binding var zoomIndex: Int
+    let tintColor: UIColor
+
+    func makeUIView(context: Context) -> UISlider {
+        let slider = UISlider(frame: .zero)
+        slider.minimumValue = 0
+        slider.maximumValue = Float(ViewerZoomScale.maximumIndex)
+        slider.isContinuous = true
+        slider.addTarget(
+            context.coordinator,
+            action: #selector(Coordinator.valueChanged(_:)),
+            for: .valueChanged
+        )
+        return slider
+    }
+
+    func updateUIView(_ slider: UISlider, context: Context) {
+        context.coordinator.parent = self
+        slider.minimumValue = 0
+        slider.maximumValue = Float(ViewerZoomScale.maximumIndex)
+        slider.tintColor = tintColor
+        slider.minimumTrackTintColor = tintColor
+        slider.thumbTintColor = tintColor
+        slider.trackConfiguration = UISlider.TrackConfiguration(
+            allowsTickValuesOnly: false,
+            neutralValue: 0,
+            enabledRange: 0...1,
+            ticks: [
+                UISlider.TrackConfiguration.Tick(
+                    position: normalizedDefaultTickPosition
+                )
+            ]
+        )
+
+        let value = Float(ViewerZoomScale.clampedIndex(zoomIndex))
+        guard abs(slider.value - value) > 0.001 else { return }
+        slider.setValue(value, animated: false)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    private var normalizedDefaultTickPosition: Float {
+        let maximumIndex = Float(ViewerZoomScale.maximumIndex)
+        guard maximumIndex > 0 else { return 0 }
+        return Float(ViewerZoomScale.defaultIndex) / maximumIndex
+    }
+
+    final class Coordinator: NSObject {
+        var parent: ViewerZoomTickedSlider
+
+        init(parent: ViewerZoomTickedSlider) {
+            self.parent = parent
+        }
+
+        @objc func valueChanged(_ slider: UISlider) {
+            let index = ViewerZoomScale.clampedIndex(Int(slider.value.rounded()))
+            parent.zoomIndex = index
+            slider.setValue(Float(index), animated: false)
+        }
     }
 }
 

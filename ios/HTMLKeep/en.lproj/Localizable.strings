@@ -111,6 +111,10 @@
 "分享" = "Share";
 "正在准备分享文件..." = "Preparing Share File...";
 "更多操作" = "More Actions";
+"缩放" = "Zoom";
+"缩小" = "Zoom Out";
+"放大" = "Zoom In";
+"重置" = "Reset";
 "这个压缩包里没有可预览的文件。" = "This archive does not contain previewable files.";
 "图片" = "Image";
 "视频" = "Video";

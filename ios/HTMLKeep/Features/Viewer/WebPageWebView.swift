@@ -8,6 +8,7 @@ struct WebPageWebView: UIViewRepresentable {
     let entryHTML: String?
     let readAccessURL: URL
     let reloadToken: UUID
+    let pageZoom: CGFloat
     let onLoadStateChange: (ViewerLoadState) -> Void
     let onRequestDismiss: () -> Void
     let onRuntimeStorageChange: () -> Void
@@ -144,6 +145,7 @@ struct WebPageWebView: UIViewRepresentable {
 
         let webView = ViewerWKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
+        webView.pageZoom = pageZoom
         webView.applyViewportBackground(viewportBackground)
         webView.scrollView.alwaysBounceVertical = true
         webView.scrollView.delegate = context.coordinator
@@ -175,6 +177,9 @@ struct WebPageWebView: UIViewRepresentable {
         context.coordinator.onTopOverlayPreferenceChange = onTopOverlayPreferenceChange
         context.coordinator.projectFolderURL = readAccessURL
         context.coordinator.virtualEntryURL = entryHTML == nil ? nil : entryURL
+        if abs(webView.pageZoom - pageZoom) > 0.001 {
+            webView.pageZoom = pageZoom
+        }
         if let viewerWebView = webView as? ViewerWKWebView {
             viewerWebView.applyViewportBackground(viewportBackground)
             viewerWebView.applyViewportInsetsIfNeeded()

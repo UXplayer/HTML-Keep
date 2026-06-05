@@ -71,6 +71,10 @@
 "分享" = "Compartir";
 "正在准备分享文件..." = "Preparando archivo para compartir...";
 "更多操作" = "Más acciones";
+"缩放" = "Zoom";
+"缩小" = "Alejar";
+"放大" = "Acercar";
+"重置" = "Restablecer";
 "重命名" = "Renombrar";
 "打开 HTML 文件" = "Abrir archivo HTML";
 "打开网页文件" = "Abrir archivo web";
