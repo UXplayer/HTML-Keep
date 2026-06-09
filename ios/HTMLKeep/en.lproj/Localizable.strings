@@ -83,6 +83,7 @@
 "请输入有效的 URL 或数字暗号。" = "Enter a valid URL or numeric code.";
 "只支持导入 http 或 https URL。" = "Only http and https URLs can be imported.";
 "无法下载这个 URL。服务器返回 %@。" = "Could not download this URL. The server returned %@.";
+"无法下载这个 URL。%@" = "Could not download this URL. %@";
 "没有下载到可导入的文件。" = "No importable file was downloaded.";
 "这个 ZIP 压缩包里没有可打开的 HTML 文件。" = "This ZIP archive does not contain an HTML file that can be opened.";
 "网页" = "Page";

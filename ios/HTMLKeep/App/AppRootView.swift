@@ -13,6 +13,7 @@ private enum RemoteWebPageImportError: LocalizedError {
     case invalidInput
     case unsupportedScheme
     case badStatus(Int)
+    case downloadFailed(String)
     case missingDownload
     case fileTooLarge
 
@@ -28,6 +29,11 @@ private enum RemoteWebPageImportError: LocalizedError {
             return String(
                 format: AppStrings.localized("无法下载这个 URL。服务器返回 %@。"),
                 "\(statusCode)"
+            )
+        case .downloadFailed(let message):
+            return String(
+                format: AppStrings.localized("无法下载这个 URL。%@"),
+                message
             )
         case .missingDownload:
             return AppStrings.localized("没有下载到可导入的文件。")
@@ -70,7 +76,13 @@ private enum RemoteWebPageImportDownloader {
     }
 
     static func download(from remoteURL: URL) async throws -> URL {
-        let (downloadedURL, response) = try await URLSession.shared.download(from: remoteURL)
+        let downloadedURL: URL
+        let response: URLResponse
+        do {
+            (downloadedURL, response) = try await URLSession.shared.download(from: remoteURL)
+        } catch {
+            throw RemoteWebPageImportError.downloadFailed(error.localizedDescription)
+        }
 
         if let httpResponse = response as? HTTPURLResponse,
            !(200...299).contains(httpResponse.statusCode) {
