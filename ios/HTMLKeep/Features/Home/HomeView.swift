@@ -126,20 +126,20 @@ struct HomeView: View {
             BottomActionDock {
                 HStack(spacing: 12) {
                     AppActionButton(
-                        AppStrings.localized("打开文件"),
-                        systemImage: "doc.badge.plus",
+                        AppStrings.localized("打开网页文件"),
                         scene: .sky
                     ) {
                         onOpenImporter()
                     }
 
-                    AppActionButton(
-                        AppStrings.localized("打开 URL"),
-                        systemImage: "link",
-                        scene: .leaf
+                    AppActionIconButton(
+                        coloredIconAssetName: "IconKeyGold",
+                        scene: .neutralDark,
+                        size: .large
                     ) {
                         onOpenURLImporter()
                     }
+                    .accessibilityLabel(AppStrings.localized("输入暗号"))
                 }
             }
 

@@ -1482,19 +1482,22 @@ struct AppActionButtonSurface: View {
 }
 
 struct AppActionIconButton: View {
-    let systemImage: String
+    let coloredIconAssetName: String?
+    let systemImage: String?
     let scene: AppActionButtonScene
     let size: AppActionButtonSize
     let haptic: AppActionButtonHaptic
     let action: () -> Void
 
     init(
-        systemImage: String,
+        coloredIconAssetName: String? = nil,
+        systemImage: String? = nil,
         scene: AppActionButtonScene = .neutralLight,
         size: AppActionButtonSize = .medium,
         haptic: AppActionButtonHaptic = .defaultTap,
         action: @escaping () -> Void = {}
     ) {
+        self.coloredIconAssetName = coloredIconAssetName
         self.systemImage = systemImage
         self.scene = scene
         self.size = size
@@ -1506,10 +1509,16 @@ struct AppActionIconButton: View {
         let metrics = size.metrics
 
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: metrics.iconSize * 0.62, weight: .black))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityHidden(true)
+            ZStack {
+                if let coloredIconAssetName {
+                    AppColoredIcon(assetName: coloredIconAssetName, size: metrics.iconSize)
+                } else if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.system(size: metrics.iconSize * 0.62, weight: .black))
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .buttonStyle(AppActionButtonStyle(scene: scene, size: size, haptic: haptic))
         .frame(width: metrics.iconOnlyFrameSize, height: metrics.iconOnlyFrameSize)

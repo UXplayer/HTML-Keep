@@ -11,7 +11,6 @@ private let remoteWebPageImportMaximumByteCount: Int64 = 200_000_000
 private enum RemoteWebPageImportError: LocalizedError {
     case emptyInput
     case invalidInput
-    case unsupportedScheme
     case badStatus(Int)
     case downloadFailed(String)
     case missingDownload
@@ -20,19 +19,17 @@ private enum RemoteWebPageImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .emptyInput:
-            return AppStrings.localized("请输入 URL 或数字暗号。")
+            return AppStrings.localized("请输入 Hub 暗号。")
         case .invalidInput:
-            return AppStrings.localized("请输入有效的 URL 或数字暗号。")
-        case .unsupportedScheme:
-            return AppStrings.localized("只支持导入 http 或 https URL。")
+            return AppStrings.localized("请输入有效的 Hub 暗号。")
         case .badStatus(let statusCode):
             return String(
-                format: AppStrings.localized("无法下载这个 URL。服务器返回 %@。"),
+                format: AppStrings.localized("无法下载这个暗号。服务器返回 %@。"),
                 "\(statusCode)"
             )
         case .downloadFailed(let message):
             return String(
-                format: AppStrings.localized("无法下载这个 URL。%@"),
+                format: AppStrings.localized("无法下载这个暗号。%@"),
                 message
             )
         case .missingDownload:
@@ -47,32 +44,17 @@ private enum RemoteWebPageImportError: LocalizedError {
 }
 
 private enum RemoteWebPageImportDownloader {
-    static func normalizedURL(from rawInput: String) throws -> URL {
+    static func hubCodeURL(from rawInput: String) throws -> URL {
         let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else {
             throw RemoteWebPageImportError.emptyInput
         }
 
-        if input.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil {
-            return remoteWebPageImportHubBaseURL.appendingPathComponent(input, isDirectory: false)
-        }
-
-        let candidate = input.contains("://") ? input : "https://\(input)"
-        guard let components = URLComponents(string: candidate),
-              let scheme = components.scheme?.lowercased(),
-              let host = components.host,
-              !host.isEmpty else {
+        guard input.range(of: #"^[0-9]{6,12}$"#, options: .regularExpression) != nil else {
             throw RemoteWebPageImportError.invalidInput
         }
 
-        guard scheme == "http" || scheme == "https" else {
-            throw RemoteWebPageImportError.unsupportedScheme
-        }
-
-        guard let url = components.url else {
-            throw RemoteWebPageImportError.invalidInput
-        }
-        return url
+        return remoteWebPageImportHubBaseURL.appendingPathComponent(input, isDirectory: false)
     }
 
     static func download(from remoteURL: URL) async throws -> URL {
@@ -216,11 +198,11 @@ struct AppRootView: View {
                 settingsSheet(for: sheet, host: .root)
                     .preferredColorScheme(appearancePreference.colorScheme)
             }
-            .alert(AppStrings.localized("打开 URL"), isPresented: $isURLImportAlertPresented) {
-                TextField(AppStrings.localized("URL 或数字暗号"), text: $urlImportDraft)
+            .alert(AppStrings.localized("输入暗号"), isPresented: $isURLImportAlertPresented) {
+                TextField(AppStrings.localized("Hub 暗号"), text: $urlImportDraft)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .keyboardType(.URL)
+                    .keyboardType(.numberPad)
                 Button(AppStrings.localized("取消"), role: .cancel) {
                     urlImportDraft = ""
                 }
@@ -228,7 +210,7 @@ struct AppRootView: View {
                     submitURLImport()
                 }
             } message: {
-                Text(AppStrings.localized("输入网页地址，或输入 Hub 分享暗号。"))
+                Text(AppStrings.localized("输入 Hub 分享暗号。"))
             }
             .modifier(rootAlertModifier)
             .modifier(runtimePresentationModifier)
@@ -1077,7 +1059,7 @@ struct AppRootView: View {
 
         let remoteURL: URL
         do {
-            remoteURL = try RemoteWebPageImportDownloader.normalizedURL(from: rawInput)
+            remoteURL = try RemoteWebPageImportDownloader.hubCodeURL(from: rawInput)
         } catch {
             importError = error.localizedDescription
             return
@@ -2263,7 +2245,7 @@ private enum WebPageImportPreviewSource: Equatable {
         case .file:
             return AppStrings.localized("打开文件")
         case .url:
-            return AppStrings.localized("重新输入 URL")
+            return AppStrings.localized("重新输入暗号")
         }
     }
 
@@ -2272,7 +2254,7 @@ private enum WebPageImportPreviewSource: Equatable {
         case .file:
             return "doc.badge.plus"
         case .url:
-            return "link"
+            return "number"
         }
     }
 
@@ -2281,7 +2263,7 @@ private enum WebPageImportPreviewSource: Equatable {
         case .file:
             return AppStrings.localized("正在整理这个文件，请稍等。")
         case .url:
-            return AppStrings.localized("正在下载并整理这个 URL，请稍等。")
+            return AppStrings.localized("正在下载并整理这个暗号，请稍等。")
         }
     }
 }
