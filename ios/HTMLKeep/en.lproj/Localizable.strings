@@ -117,6 +117,7 @@
 "分享" = "Share";
 "正在准备分享文件..." = "Preparing Share File...";
 "生成暗号" = "Generate Code";
+"查看暗号" = "View Code";
 "生成分享暗号" = "Generate Share Code";
 "上传后这份文件会公开，任何拿到暗号或链接的人都可以下载。" = "After upload, this file is public. Anyone with the code or link can download it.";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "Kept for 30 days by default. Hub will clean it up after it expires.";

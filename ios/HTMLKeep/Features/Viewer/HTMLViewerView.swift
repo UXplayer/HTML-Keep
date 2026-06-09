@@ -1,3 +1,4 @@
+import CryptoKit
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -25,9 +26,11 @@ struct HTMLViewerView: View {
     @State private var reloadToken = UUID()
     @State private var webPageZoomIndex = ViewerZoomScale.defaultIndex
     @State private var isActionsPopoverPresented = false
+    @State private var pendingActionsPopoverAction: HTMLViewerActionsPopoverAction?
     @State private var presentedViewerSheet: ViewerPresentedSheet?
     @State private var sharePayload: SharePayload?
     @State private var isHubShareCodeSheetPresented = false
+    @State private var hubShareCache: WebPageHubShareCache.ValidShare?
     @State private var isPreparingShare = false
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
@@ -103,6 +106,9 @@ struct HTMLViewerView: View {
                         arrowEdge: .top
                     ) {
                         actionsPopover
+                            .onDisappear {
+                                performPendingActionsPopoverAction()
+                            }
                     }
                 }
             }
@@ -117,7 +123,12 @@ struct HTMLViewerView: View {
             ActivityShareSheet(activityItems: [payload.url])
         }
         .sheet(isPresented: $isHubShareCodeSheetPresented) {
-            HubShareCodeSheet(projectTitle: page.title) {
+            HubShareCodeSheet(
+                projectTitle: page.title,
+                projectFolderURL: folderURL,
+                cachedShare: hubShareCache,
+                onCacheChanged: { hubShareCache = $0 }
+            ) {
                 let projectFolderURL = folderURL
                 let projectTitle = page.title
                 return try await Task.detached(priority: .userInitiated) {
@@ -196,6 +207,9 @@ struct HTMLViewerView: View {
             .disabled(normalizedDraftProjectTitle.isEmpty)
         } message: {
             Text(AppStrings.localized("只会修改首页列表中的项目名称，不会更改 HTML 文件或页面标题。"))
+        }
+        .task(id: page.id) {
+            await refreshHubShareCache()
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -352,8 +366,7 @@ struct HTMLViewerView: View {
                 title: AppStrings.localized("缩放"),
                 systemImage: "plus.magnifyingglass"
             ) {
-                isActionsPopoverPresented = false
-                startShowingZoomSheetAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .zoom)
             }
             Divider()
                 .padding(.leading, 52)
@@ -362,18 +375,16 @@ struct HTMLViewerView: View {
                 title: AppStrings.localized("分享"),
                 systemImage: "square.and.arrow.up"
             ) {
-                isActionsPopoverPresented = false
-                startSharingAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .share)
             }
             Divider()
                 .padding(.leading, 52)
 
             ViewerActionPopoverRow(
-                title: AppStrings.localized("生成暗号"),
+                title: AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
                 systemImage: "key.fill"
             ) {
-                isActionsPopoverPresented = false
-                startGeneratingHubCodeAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .hubCode)
             }
             Divider()
                 .padding(.leading, 52)
@@ -382,8 +393,7 @@ struct HTMLViewerView: View {
                 title: AppStrings.localized("重命名"),
                 systemImage: "pencil"
             ) {
-                isActionsPopoverPresented = false
-                startRenamingAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .rename)
             }
             Divider()
                 .padding(.leading, 52)
@@ -393,8 +403,7 @@ struct HTMLViewerView: View {
                 systemImage: "trash",
                 role: .destructive
             ) {
-                isActionsPopoverPresented = false
-                startClearingCacheAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .clearCache)
             }
         }
         .padding(.vertical)
@@ -558,11 +567,33 @@ struct HTMLViewerView: View {
         }
     }
 
+    private func dismissActionsPopover(then action: HTMLViewerActionsPopoverAction) {
+        pendingActionsPopoverAction = action
+        isActionsPopoverPresented = false
+    }
+
+    private func performPendingActionsPopoverAction() {
+        guard let action = pendingActionsPopoverAction else { return }
+        pendingActionsPopoverAction = nil
+        DispatchQueue.main.async {
+            switch action {
+            case .rename:
+                startRenamingAfterActionsPopoverDismiss()
+            case .share:
+                startSharingAfterActionsPopoverDismiss()
+            case .hubCode:
+                startGeneratingHubCodeAfterActionsPopoverDismiss()
+            case .zoom:
+                startShowingZoomSheetAfterActionsPopoverDismiss()
+            case .clearCache:
+                startClearingCacheAfterActionsPopoverDismiss()
+            }
+        }
+    }
+
     private func startRenamingAfterActionsPopoverDismiss() {
         draftProjectTitle = currentProject.title
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isRenameAlertPresented = true
-        }
+        isRenameAlertPresented = true
     }
 
     private func handleLocalFileNavigation(_ url: URL) {
@@ -600,27 +631,28 @@ struct HTMLViewerView: View {
     }
 
     private func startSharingAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            prepareShare()
-        }
+        prepareShare()
     }
 
     private func startGeneratingHubCodeAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isHubShareCodeSheetPresented = true
-        }
+        isHubShareCodeSheetPresented = true
     }
 
     private func startShowingZoomSheetAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            presentedViewerSheet = .zoom
-        }
+        presentedViewerSheet = .zoom
+    }
+
+    private func refreshHubShareCache() async {
+        let projectFolderURL = folderURL
+        let validShare = await Task.detached(priority: .utility) {
+            WebPageHubShareCache.validShare(in: projectFolderURL)
+        }.value
+        guard !Task.isCancelled else { return }
+        hubShareCache = validShare
     }
 
     private func startClearingCacheAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isClearCacheAlertPresented = true
-        }
+        isClearCacheAlertPresented = true
     }
 
     private func clearRuntimeStorage() {
@@ -631,6 +663,7 @@ struct HTMLViewerView: View {
                     projectFolderURL: folderURL
                 )
                 onRuntimeStorageChanged()
+                hubShareCache = nil
                 webViewIdentity = UUID()
                 reloadToken = UUID()
             } catch {
@@ -717,6 +750,14 @@ private enum ViewerPresentedSheet: Identifiable {
             return "zoom"
         }
     }
+}
+
+private enum HTMLViewerActionsPopoverAction {
+    case rename
+    case share
+    case hubCode
+    case zoom
+    case clearCache
 }
 
 private enum ViewerZoomScale {
@@ -976,15 +1017,141 @@ struct SharePayload: Identifiable {
     let url: URL
 }
 
+enum WebPageHubShareCache {
+    struct ValidShare: Equatable, Sendable {
+        let result: HubShareUploadResult
+        let projectFingerprint: String
+    }
+
+    private struct Snapshot: Codable, Equatable {
+        let schemaVersion: Int
+        let savedAt: Date
+        let projectFingerprint: String
+        let result: HubShareUploadResult
+    }
+
+    static func validShare(
+        in projectFolderURL: URL,
+        fileManager: FileManager = .default,
+        now: Date = .now
+    ) -> ValidShare? {
+        let url = cacheURL(in: projectFolderURL)
+        guard fileManager.fileExists(atPath: url.path) else {
+            return nil
+        }
+        guard let data = try? Data(contentsOf: url),
+              let snapshot = try? decoder.decode(Snapshot.self, from: data),
+              snapshot.schemaVersion == 1 else {
+            try? fileManager.removeItem(at: url)
+            return nil
+        }
+        guard !snapshot.result.isExpired(now: now) else {
+            try? fileManager.removeItem(at: url)
+            return nil
+        }
+        guard let currentFingerprint = try? projectFingerprint(in: projectFolderURL, fileManager: fileManager) else {
+            return nil
+        }
+        guard currentFingerprint == snapshot.projectFingerprint else {
+            try? fileManager.removeItem(at: url)
+            return nil
+        }
+        return ValidShare(result: snapshot.result, projectFingerprint: snapshot.projectFingerprint)
+    }
+
+    static func save(
+        result: HubShareUploadResult,
+        projectFingerprint: String,
+        in projectFolderURL: URL,
+        fileManager: FileManager = .default
+    ) throws -> ValidShare {
+        try fileManager.createDirectory(
+            at: runtimeDirectoryURL(in: projectFolderURL),
+            withIntermediateDirectories: true
+        )
+        let snapshot = Snapshot(
+            schemaVersion: 1,
+            savedAt: .now,
+            projectFingerprint: projectFingerprint,
+            result: result
+        )
+        let data = try encoder.encode(snapshot)
+        try data.write(to: cacheURL(in: projectFolderURL), options: [.atomic])
+        return ValidShare(result: result, projectFingerprint: projectFingerprint)
+    }
+
+    static func projectFingerprint(
+        in projectFolderURL: URL,
+        fileManager: FileManager = .default
+    ) throws -> String {
+        let relativePaths = try ZipArchiveWriter(fileManager: fileManager).regularFileRelativePaths(
+            in: projectFolderURL,
+            excluding: WebPageLibrary.isAppManagedProjectFilePath
+        )
+        guard !relativePaths.isEmpty else {
+            throw ZipArchiveWriterError.emptyFolder
+        }
+
+        var hasher = SHA256()
+        for relativePath in relativePaths {
+            let fileURL = projectFolderURL.appendingPathComponent(relativePath, isDirectory: false)
+            let fileData = try Data(contentsOf: fileURL)
+            hasher.update(data: Data("path:\(relativePath)\n".utf8))
+            hasher.update(data: Data("bytes:\(fileData.count)\n".utf8))
+            hasher.update(data: fileData)
+            hasher.update(data: Data([0]))
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func runtimeDirectoryURL(in projectFolderURL: URL) -> URL {
+        projectFolderURL.appendingPathComponent(WebPageRuntimeStorage.directoryName, isDirectory: true)
+    }
+
+    private static func cacheURL(in projectFolderURL: URL) -> URL {
+        runtimeDirectoryURL(in: projectFolderURL)
+            .appendingPathComponent("hub-share.json", isDirectory: false)
+    }
+
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+}
+
 struct HubShareCodeSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let projectTitle: String
+    let projectFolderURL: URL
+    let onCacheChanged: (WebPageHubShareCache.ValidShare?) -> Void
     let prepareShareURL: () async throws -> URL
 
-    @State private var phase: HubShareCodePhase = .confirm
+    @State private var phase: HubShareCodePhase
     @State private var uploadTask: Task<Void, Never>?
     @State private var isCopied = false
+
+    init(
+        projectTitle: String,
+        projectFolderURL: URL,
+        cachedShare: WebPageHubShareCache.ValidShare?,
+        onCacheChanged: @escaping (WebPageHubShareCache.ValidShare?) -> Void,
+        prepareShareURL: @escaping () async throws -> URL
+    ) {
+        self.projectTitle = projectTitle
+        self.projectFolderURL = projectFolderURL
+        self.onCacheChanged = onCacheChanged
+        self.prepareShareURL = prepareShareURL
+        _phase = State(initialValue: cachedShare.map { .completed($0.result) } ?? .confirm)
+    }
 
     private var sheetHeight: CGFloat {
         switch phase {
@@ -1010,7 +1177,7 @@ struct HubShareCodeSheet: View {
                 .padding(.top, 18)
                 .padding(.bottom, 28)
             }
-            .navigationTitle(AppStrings.localized("生成暗号"))
+            .navigationTitle(AppStrings.localized(phase.isCompleted ? "查看暗号" : "生成暗号"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -1197,6 +1364,10 @@ struct HubShareCodeSheet: View {
         }
 
         do {
+            let projectFolderURL = projectFolderURL
+            let projectFingerprint = try await Task.detached(priority: .utility) {
+                try WebPageHubShareCache.projectFingerprint(in: projectFolderURL)
+            }.value
             let shareURL = try await prepareShareURL()
             defer {
                 WebPageShareExporter().cleanupTemporaryExportIfNeeded(at: shareURL)
@@ -1215,6 +1386,14 @@ struct HubShareCodeSheet: View {
                 }
             )
 
+            let cachedShare = try? WebPageHubShareCache.save(
+                result: result,
+                projectFingerprint: projectFingerprint,
+                in: projectFolderURL
+            )
+            if let cachedShare {
+                onCacheChanged(cachedShare)
+            }
             withAnimation(.snappy(duration: 0.2)) {
                 phase = .completed(result)
             }
@@ -1237,6 +1416,13 @@ private enum HubShareCodePhase: Equatable {
 
     var isWorking: Bool {
         if case .uploading = self {
+            return true
+        }
+        return false
+    }
+
+    var isCompleted: Bool {
+        if case .completed = self {
             return true
         }
         return false
@@ -1300,7 +1486,7 @@ private struct HubShareCodePrimaryButton: View {
     }
 }
 
-private struct HubShareUploadResult: Decodable, Equatable {
+struct HubShareUploadResult: Codable, Equatable, Sendable {
     let code: String
     let url: URL
     let fileName: String
@@ -1311,13 +1497,23 @@ private struct HubShareUploadResult: Decodable, Equatable {
     var detailText: String {
         let expiryText: String
         if let expiresAt,
-           let date = ISO8601DateFormatter.htmlKeepHub.date(from: expiresAt) {
+           let date = ISO8601DateFormatter.htmlKeepHubDate(from: expiresAt) {
             expiryText = DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
         } else {
             expiryText = AppStrings.localized("永久保存")
         }
 
         return "\(fileName) · \(Self.formatBytes(byteSize)) · \(expiryText)"
+    }
+
+    func isExpired(now: Date = .now) -> Bool {
+        guard let expiresAt else {
+            return false
+        }
+        guard let expiryDate = ISO8601DateFormatter.htmlKeepHubDate(from: expiresAt) else {
+            return true
+        }
+        return expiryDate <= now
     }
 
     func copyText(projectTitle: String) -> String {
@@ -1521,6 +1717,16 @@ private extension ISO8601DateFormatter {
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
     }()
+
+    static let htmlKeepHubWithoutFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static func htmlKeepHubDate(from value: String) -> Date? {
+        htmlKeepHub.date(from: value) ?? htmlKeepHubWithoutFractionalSeconds.date(from: value)
+    }
 }
 
 private struct ViewerNavigationBarChromeInstaller: UIViewControllerRepresentable {

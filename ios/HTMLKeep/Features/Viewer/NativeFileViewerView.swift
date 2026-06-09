@@ -16,6 +16,7 @@ struct NativeFileViewerView: View {
 
     @State private var previewPage: NativeFilePreviewItem?
     @State private var isActionsPopoverPresented = false
+    @State private var pendingActionsPopoverAction: NativeFileViewerActionsPopoverAction?
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
     @State private var isDeleteAlertPresented = false
@@ -23,6 +24,7 @@ struct NativeFileViewerView: View {
     @State private var isRestoreErrorPresented = false
     @State private var sharePayload: SharePayload?
     @State private var isHubShareCodeSheetPresented = false
+    @State private var hubShareCache: WebPageHubShareCache.ValidShare?
     @State private var isPreparingShare = false
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
@@ -66,6 +68,9 @@ struct NativeFileViewerView: View {
                         arrowEdge: .top
                     ) {
                         actionsPopover
+                            .onDisappear {
+                                performPendingActionsPopoverAction()
+                            }
                     }
                 }
             }
@@ -74,7 +79,12 @@ struct NativeFileViewerView: View {
             ActivityShareSheet(activityItems: [payload.url])
         }
         .sheet(isPresented: $isHubShareCodeSheetPresented) {
-            HubShareCodeSheet(projectTitle: page.title) {
+            HubShareCodeSheet(
+                projectTitle: page.title,
+                projectFolderURL: folderURL,
+                cachedShare: hubShareCache,
+                onCacheChanged: { hubShareCache = $0 }
+            ) {
                 let projectFolderURL = folderURL
                 let projectTitle = page.title
                 return try await Task.detached(priority: .userInitiated) {
@@ -133,6 +143,9 @@ struct NativeFileViewerView: View {
         } message: {
             Text(shareErrorMessage ?? "")
         }
+        .task(id: page.id) {
+            await refreshHubShareCache()
+        }
         .safeAreaInset(edge: .bottom) {
             if isRecentlyDeletedViewer {
                 recentlyDeletedActionDock
@@ -188,18 +201,16 @@ struct NativeFileViewerView: View {
                 title: AppStrings.localized("分享"),
                 systemImage: "square.and.arrow.up"
             ) {
-                isActionsPopoverPresented = false
-                startSharingAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .share)
             }
             Divider()
                 .padding(.leading, 52)
 
             ViewerActionPopoverRow(
-                title: AppStrings.localized("生成暗号"),
+                title: AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
                 systemImage: "key.fill"
             ) {
-                isActionsPopoverPresented = false
-                startGeneratingHubCodeAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .hubCode)
             }
             Divider()
                 .padding(.leading, 52)
@@ -208,8 +219,7 @@ struct NativeFileViewerView: View {
                 title: AppStrings.localized("重命名"),
                 systemImage: "pencil"
             ) {
-                isActionsPopoverPresented = false
-                startRenamingAfterActionsPopoverDismiss()
+                dismissActionsPopover(then: .rename)
             }
             Divider()
                 .padding(.leading, 52)
@@ -219,10 +229,7 @@ struct NativeFileViewerView: View {
                 systemImage: "trash",
                 role: .destructive
             ) {
-                isActionsPopoverPresented = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    isDeleteAlertPresented = true
-                }
+                dismissActionsPopover(then: .delete)
             }
         }
         .padding(.vertical)
@@ -342,23 +349,48 @@ struct NativeFileViewerView: View {
         NativeFileKind.kind(for: file)
     }
 
+    private func dismissActionsPopover(then action: NativeFileViewerActionsPopoverAction) {
+        pendingActionsPopoverAction = action
+        isActionsPopoverPresented = false
+    }
+
+    private func performPendingActionsPopoverAction() {
+        guard let action = pendingActionsPopoverAction else { return }
+        pendingActionsPopoverAction = nil
+        DispatchQueue.main.async {
+            switch action {
+            case .rename:
+                startRenamingAfterActionsPopoverDismiss()
+            case .share:
+                startSharingAfterActionsPopoverDismiss()
+            case .hubCode:
+                startGeneratingHubCodeAfterActionsPopoverDismiss()
+            case .delete:
+                isDeleteAlertPresented = true
+            }
+        }
+    }
+
     private func startRenamingAfterActionsPopoverDismiss() {
         draftProjectTitle = page.title
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isRenameAlertPresented = true
-        }
+        isRenameAlertPresented = true
     }
 
     private func startSharingAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            prepareShare()
-        }
+        prepareShare()
     }
 
     private func startGeneratingHubCodeAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isHubShareCodeSheetPresented = true
-        }
+        isHubShareCodeSheetPresented = true
+    }
+
+    private func refreshHubShareCache() async {
+        let projectFolderURL = folderURL
+        let validShare = await Task.detached(priority: .utility) {
+            WebPageHubShareCache.validShare(in: projectFolderURL)
+        }.value
+        guard !Task.isCancelled else { return }
+        hubShareCache = validShare
     }
 
     private func prepareShare() {
@@ -433,6 +465,13 @@ private struct NativeFileDirectoryGroup: Identifiable {
     var title: String? {
         directoryPath.isEmpty ? nil : directoryPath
     }
+}
+
+private enum NativeFileViewerActionsPopoverAction {
+    case rename
+    case share
+    case hubCode
+    case delete
 }
 
 private struct NativeFilePreviewItem: Identifiable {
