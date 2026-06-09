@@ -71,6 +71,7 @@
 "正在导入" = "Importing";
 "正在导入网页..." = "Importing Page...";
 "正在整理这个文件，请稍等。" = "Preparing this file. Please wait.";
+"正在下载并整理这个 URL，请稍等。" = "Downloading and preparing this URL. Please wait.";
 "无法读取这个 HTML 文件。" = "Could not read this HTML file.";
 "无法读取这个 ZIP 压缩包。" = "Could not read this ZIP archive.";
 "无法解压这个 ZIP 压缩包。" = "Could not extract this ZIP archive.";
@@ -78,6 +79,11 @@
 "未命名网页" = "Untitled Page";
 "请选择 .html、.htm 或 .zip 文件。" = "Choose a .html, .htm, or .zip file.";
 "请选择一个可打开的本地文件。" = "Choose a local file that can be opened.";
+"请输入 URL 或数字暗号。" = "Enter a URL or numeric code.";
+"请输入有效的 URL 或数字暗号。" = "Enter a valid URL or numeric code.";
+"只支持导入 http 或 https URL。" = "Only http and https URLs can be imported.";
+"无法下载这个 URL。服务器返回 %@。" = "Could not download this URL. The server returned %@.";
+"没有下载到可导入的文件。" = "No importable file was downloaded.";
 "这个 ZIP 压缩包里没有可打开的 HTML 文件。" = "This ZIP archive does not contain an HTML file that can be opened.";
 "网页" = "Page";
 "网页不存在" = "Page Not Found";
@@ -146,6 +152,12 @@
 "打开 HTML 文件" = "Open HTML File";
 "打开" = "Open";
 "打开网页文件" = "Open HTML File";
+"打开文件" = "Open File";
+"打开 URL" = "Open URL";
+"重新输入 URL" = "Enter URL Again";
+"URL 或数字暗号" = "URL or Numeric Code";
+"输入网页地址，或输入 Hub 分享暗号。" = "Enter a web address or a Hub sharing code.";
+"导入" = "Import";
 "打开一个 HTML 文件，就可以在这里查看它。" = "Open an HTML file to view it here.";
 "打开一个 HTML 文件或 ZIP 压缩包，就可以在这里查看它。" = "Open an HTML file or ZIP archive to view it here.";
 "看过的网页会留在列表里，之后可以直接回来继续打开。" = "Pages you have viewed stay in the list, so you can come back and open them again.";
