@@ -22,6 +22,7 @@ struct NativeFileViewerView: View {
     @State private var isPermanentDeleteAlertPresented = false
     @State private var isRestoreErrorPresented = false
     @State private var sharePayload: SharePayload?
+    @State private var isHubShareCodeSheetPresented = false
     @State private var isPreparingShare = false
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
@@ -71,6 +72,18 @@ struct NativeFileViewerView: View {
         }
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(activityItems: [payload.url])
+        }
+        .sheet(isPresented: $isHubShareCodeSheetPresented) {
+            HubShareCodeSheet(projectTitle: page.title) {
+                let projectFolderURL = folderURL
+                let projectTitle = page.title
+                return try await Task.detached(priority: .userInitiated) {
+                    try WebPageShareExporter().shareURL(
+                        forProjectFolder: projectFolderURL,
+                        preferredName: projectTitle
+                    )
+                }.value
+            }
         }
         .navigationDestination(isPresented: previewPageBinding) {
             if let previewPage {
@@ -177,6 +190,16 @@ struct NativeFileViewerView: View {
             ) {
                 isActionsPopoverPresented = false
                 startSharingAfterActionsPopoverDismiss()
+            }
+            Divider()
+                .padding(.leading, 52)
+
+            ViewerActionPopoverRow(
+                title: AppStrings.localized("生成暗号"),
+                systemImage: "key.fill"
+            ) {
+                isActionsPopoverPresented = false
+                startGeneratingHubCodeAfterActionsPopoverDismiss()
             }
             Divider()
                 .padding(.leading, 52)
@@ -329,6 +352,12 @@ struct NativeFileViewerView: View {
     private func startSharingAfterActionsPopoverDismiss() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             prepareShare()
+        }
+    }
+
+    private func startGeneratingHubCodeAfterActionsPopoverDismiss() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isHubShareCodeSheetPresented = true
         }
     }
 
