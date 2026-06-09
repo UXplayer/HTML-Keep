@@ -25,8 +25,6 @@ struct HTMLViewerView: View {
     @State private var loadingIndicatorID: UUID?
     @State private var reloadToken = UUID()
     @State private var webPageZoomIndex = ViewerZoomScale.defaultIndex
-    @State private var isActionsPopoverPresented = false
-    @State private var pendingActionsPopoverAction: HTMLViewerActionsPopoverAction?
     @State private var presentedViewerSheet: ViewerPresentedSheet?
     @State private var sharePayload: SharePayload?
     @State private var isHubShareCodeSheetPresented = false
@@ -93,23 +91,13 @@ struct HTMLViewerView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if entryExists && !isPhoneLandscape && !isRecentlyDeletedViewer {
-                    Button {
-                        isActionsPopoverPresented = true
+                    Menu {
+                        htmlViewerActionsMenuContent
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AppStrings.localized("更多操作"))
-                    .popover(
-                        isPresented: $isActionsPopoverPresented,
-                        attachmentAnchor: .rect(.bounds),
-                        arrowEdge: .top
-                    ) {
-                        actionsPopover
-                            .onDisappear {
-                                performPendingActionsPopoverAction()
-                            }
-                    }
                 }
             }
         }
@@ -350,66 +338,46 @@ struct HTMLViewerView: View {
         }
     }
 
-    private var actionsPopover: some View {
-        VStack(spacing: 0) {
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("重新加载"),
-                systemImage: "arrow.clockwise"
-            ) {
-                isActionsPopoverPresented = false
-                reloadToken = UUID()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("缩放"),
-                systemImage: "plus.magnifyingglass"
-            ) {
-                dismissActionsPopover(then: .zoom)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("分享"),
-                systemImage: "square.and.arrow.up"
-            ) {
-                dismissActionsPopover(then: .share)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
-                systemImage: "key.fill"
-            ) {
-                dismissActionsPopover(then: .hubCode)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("重命名"),
-                systemImage: "pencil"
-            ) {
-                dismissActionsPopover(then: .rename)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("清除缓存"),
-                systemImage: "trash",
-                role: .destructive
-            ) {
-                dismissActionsPopover(then: .clearCache)
-            }
+    @ViewBuilder
+    private var htmlViewerActionsMenuContent: some View {
+        Button {
+            reloadToken = UUID()
+        } label: {
+            Label(AppStrings.localized("重新加载"), systemImage: "arrow.clockwise")
         }
-        .padding(.vertical)
-        .frame(width: min(UIScreen.main.bounds.width - 32, 260))
-        .fixedSize(horizontal: false, vertical: true)
-        .presentationCompactAdaptation(.popover)
+
+        Button {
+            startShowingZoomSheetFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("缩放"), systemImage: "plus.magnifyingglass")
+        }
+
+        Button {
+            startSharingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
+        }
+
+        Button {
+            startGeneratingHubCodeFromActionsMenu()
+        } label: {
+            Label(
+                AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
+                systemImage: "key.fill"
+            )
+        }
+
+        Button {
+            startRenamingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("重命名"), systemImage: "pencil")
+        }
+
+        Button {
+            startClearingCacheFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("清除缓存"), systemImage: "trash")
+        }
     }
 
     private func dismissViewer() {
@@ -567,31 +535,7 @@ struct HTMLViewerView: View {
         }
     }
 
-    private func dismissActionsPopover(then action: HTMLViewerActionsPopoverAction) {
-        pendingActionsPopoverAction = action
-        isActionsPopoverPresented = false
-    }
-
-    private func performPendingActionsPopoverAction() {
-        guard let action = pendingActionsPopoverAction else { return }
-        pendingActionsPopoverAction = nil
-        DispatchQueue.main.async {
-            switch action {
-            case .rename:
-                startRenamingAfterActionsPopoverDismiss()
-            case .share:
-                startSharingAfterActionsPopoverDismiss()
-            case .hubCode:
-                startGeneratingHubCodeAfterActionsPopoverDismiss()
-            case .zoom:
-                startShowingZoomSheetAfterActionsPopoverDismiss()
-            case .clearCache:
-                startClearingCacheAfterActionsPopoverDismiss()
-            }
-        }
-    }
-
-    private func startRenamingAfterActionsPopoverDismiss() {
+    private func startRenamingFromActionsMenu() {
         draftProjectTitle = currentProject.title
         isRenameAlertPresented = true
     }
@@ -630,15 +574,15 @@ struct HTMLViewerView: View {
         webContentHasTopPinnedOverlay = prefersTopSafeArea
     }
 
-    private func startSharingAfterActionsPopoverDismiss() {
+    private func startSharingFromActionsMenu() {
         prepareShare()
     }
 
-    private func startGeneratingHubCodeAfterActionsPopoverDismiss() {
+    private func startGeneratingHubCodeFromActionsMenu() {
         isHubShareCodeSheetPresented = true
     }
 
-    private func startShowingZoomSheetAfterActionsPopoverDismiss() {
+    private func startShowingZoomSheetFromActionsMenu() {
         presentedViewerSheet = .zoom
     }
 
@@ -651,7 +595,7 @@ struct HTMLViewerView: View {
         hubShareCache = validShare
     }
 
-    private func startClearingCacheAfterActionsPopoverDismiss() {
+    private func startClearingCacheFromActionsMenu() {
         isClearCacheAlertPresented = true
     }
 
@@ -750,14 +694,6 @@ private enum ViewerPresentedSheet: Identifiable {
             return "zoom"
         }
     }
-}
-
-private enum HTMLViewerActionsPopoverAction {
-    case rename
-    case share
-    case hubCode
-    case zoom
-    case clearCache
 }
 
 private enum ViewerZoomScale {
@@ -2340,35 +2276,6 @@ struct WebPageShareExporter {
             .joined(separator: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return sanitized.isEmpty ? fallback : sanitized
-    }
-}
-
-struct ViewerActionPopoverRow: View {
-    let title: String
-    let systemImage: String
-    var role: ButtonRole? = nil
-    let action: () -> Void
-
-    var body: some View {
-        Button(role: role, action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 24)
-
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(role == .destructive ? Color(uiColor: .systemRed) : Color.primary)
-        .accessibilityLabel(title)
     }
 }
 

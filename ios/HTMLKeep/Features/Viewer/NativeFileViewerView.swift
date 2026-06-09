@@ -15,11 +15,8 @@ struct NativeFileViewerView: View {
     var onPermanentlyDeletePage: (() -> Void)? = nil
 
     @State private var previewPage: NativeFilePreviewItem?
-    @State private var isActionsPopoverPresented = false
-    @State private var pendingActionsPopoverAction: NativeFileViewerActionsPopoverAction?
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
-    @State private var isDeleteAlertPresented = false
     @State private var isPermanentDeleteAlertPresented = false
     @State private var isRestoreErrorPresented = false
     @State private var sharePayload: SharePayload?
@@ -55,23 +52,13 @@ struct NativeFileViewerView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if !isRecentlyDeletedViewer {
-                    Button {
-                        isActionsPopoverPresented = true
+                    Menu {
+                        nativeFileViewerActionsMenuContent
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AppStrings.localized("更多操作"))
-                    .popover(
-                        isPresented: $isActionsPopoverPresented,
-                        attachmentAnchor: .rect(.bounds),
-                        arrowEdge: .top
-                    ) {
-                        actionsPopover
-                            .onDisappear {
-                                performPendingActionsPopoverAction()
-                            }
-                    }
                 }
             }
         }
@@ -112,14 +99,6 @@ struct NativeFileViewerView: View {
             .disabled(normalizedDraftProjectTitle.isEmpty)
         }
         .background(SystemAlertTextFieldClearButtonInstaller(isActive: isRenameAlertPresented))
-        .alert(AppStrings.localized("删除网页？"), isPresented: $isDeleteAlertPresented) {
-            Button(AppStrings.localized("取消"), role: .cancel) {}
-            Button(AppStrings.localized("删除"), role: .destructive) {
-                onDeletePage()
-            }
-        } message: {
-            Text(AppStrings.localized("这会将网页移到最近删除，之后可以在设置中恢复。"))
-        }
         .alert(
             AppStrings.localized("彻底删除网页？"),
             isPresented: $isPermanentDeleteAlertPresented
@@ -195,47 +174,28 @@ struct NativeFileViewerView: View {
         }
     }
 
-    private var actionsPopover: some View {
-        VStack(spacing: 0) {
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("分享"),
-                systemImage: "square.and.arrow.up"
-            ) {
-                dismissActionsPopover(then: .share)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
-                systemImage: "key.fill"
-            ) {
-                dismissActionsPopover(then: .hubCode)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("重命名"),
-                systemImage: "pencil"
-            ) {
-                dismissActionsPopover(then: .rename)
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("删除"),
-                systemImage: "trash",
-                role: .destructive
-            ) {
-                dismissActionsPopover(then: .delete)
-            }
+    @ViewBuilder
+    private var nativeFileViewerActionsMenuContent: some View {
+        Button {
+            startSharingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
         }
-        .padding(.vertical)
-        .frame(width: min(UIScreen.main.bounds.width - 32, 260))
-        .fixedSize(horizontal: false, vertical: true)
-        .presentationCompactAdaptation(.popover)
+
+        Button {
+            startGeneratingHubCodeFromActionsMenu()
+        } label: {
+            Label(
+                AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
+                systemImage: "key.fill"
+            )
+        }
+
+        Button {
+            startRenamingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("重命名"), systemImage: "pencil")
+        }
     }
 
     private var recentlyDeletedActionDock: some View {
@@ -349,38 +309,16 @@ struct NativeFileViewerView: View {
         NativeFileKind.kind(for: file)
     }
 
-    private func dismissActionsPopover(then action: NativeFileViewerActionsPopoverAction) {
-        pendingActionsPopoverAction = action
-        isActionsPopoverPresented = false
-    }
-
-    private func performPendingActionsPopoverAction() {
-        guard let action = pendingActionsPopoverAction else { return }
-        pendingActionsPopoverAction = nil
-        DispatchQueue.main.async {
-            switch action {
-            case .rename:
-                startRenamingAfterActionsPopoverDismiss()
-            case .share:
-                startSharingAfterActionsPopoverDismiss()
-            case .hubCode:
-                startGeneratingHubCodeAfterActionsPopoverDismiss()
-            case .delete:
-                isDeleteAlertPresented = true
-            }
-        }
-    }
-
-    private func startRenamingAfterActionsPopoverDismiss() {
+    private func startRenamingFromActionsMenu() {
         draftProjectTitle = page.title
         isRenameAlertPresented = true
     }
 
-    private func startSharingAfterActionsPopoverDismiss() {
+    private func startSharingFromActionsMenu() {
         prepareShare()
     }
 
-    private func startGeneratingHubCodeAfterActionsPopoverDismiss() {
+    private func startGeneratingHubCodeFromActionsMenu() {
         isHubShareCodeSheetPresented = true
     }
 
@@ -465,13 +403,6 @@ private struct NativeFileDirectoryGroup: Identifiable {
     var title: String? {
         directoryPath.isEmpty ? nil : directoryPath
     }
-}
-
-private enum NativeFileViewerActionsPopoverAction {
-    case rename
-    case share
-    case hubCode
-    case delete
 }
 
 private struct NativeFilePreviewItem: Identifiable {
