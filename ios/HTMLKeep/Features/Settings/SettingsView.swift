@@ -31,6 +31,12 @@ enum SettingsContainerStyle {
     case systemPopover
 }
 
+private extension View {
+    func settingsListRowSurface() -> some View {
+        listRowBackground(AppTheme.surfaceStrong)
+    }
+}
+
 struct SettingsView: View {
     @AppStorage(AppPreferenceKeys.language) private var languagePreferenceRaw = AppLanguagePreference.automatic.rawValue
     @AppStorage(AppPreferenceKeys.appearance) private var appearancePreferenceRaw = AppAppearancePreference.automatic.rawValue
@@ -126,6 +132,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
 
                 Button {
                     onOpenAppearanceSettings()
@@ -137,6 +144,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
 
                 Button {
                     onOpenLanguageSettings()
@@ -148,6 +156,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
             } header: {
                 AppListSectionTitle(AppStrings.localized("显示"))
             }
@@ -162,6 +171,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
 
                 Button {
                     onOpenAgentImport()
@@ -172,6 +182,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
             } header: {
                 AppListSectionTitle(AppStrings.localized("扩展"))
             }
@@ -186,6 +197,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
 
                 Button {
                     isShowingShareSheet = true
@@ -196,6 +208,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
             } header: {
                 AppListSectionTitle(AppStrings.localized("支持"))
             }
@@ -210,6 +223,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
 
                 Button {
                     openExternalLink(Self.discordURL)
@@ -220,6 +234,7 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
             } header: {
                 AppListSectionTitle(AppStrings.localized("关于"))
             }
@@ -234,8 +249,10 @@ struct SettingsView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .settingsListRowSurface()
 
                 iCloudSyncRow
+                    .settingsListRowSurface()
             } header: {
                 AppListSectionTitle(AppStrings.localized("数据"))
             } footer: {
@@ -265,12 +282,14 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .settingsListRowSurface()
 
                     SettingsToggleRow(
                         title: AppStrings.localized("debug.settings.floating.toggle"),
                         leadingIconAssetName: "IconEye",
                         isOn: debugFloatingBallVisibilityBinding
                     )
+                    .settingsListRowSurface()
 
                     Button {
                         resetDebugFloatingBallPosition()
@@ -282,11 +301,13 @@ struct SettingsView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .settingsListRowSurface()
 
                     if let debugToolsStatusMessage {
                         Text(debugToolsStatusMessage)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(AppTheme.textSecondary)
+                            .settingsListRowSurface()
                     }
                 } header: {
                     AppListSectionTitle(AppStrings.localized("debug.settings.section.title"))
@@ -2879,6 +2900,7 @@ private struct SettingsPreferenceSelectionView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .settingsListRowSurface()
                 }
             }
         }
