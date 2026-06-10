@@ -67,6 +67,7 @@ struct HomeView: View {
     let searchResults: (String, WebPageSearchScope) -> [WebPageSearchResult]
     let onSearchFullContent: () async -> Void
     let onOpenImporter: () -> Void
+    let onOpenURLImporter: () -> Void
     let onOpenSettings: (UIBarButtonItem?) -> Void
     let onOpenProEntitlement: () -> Void
     let onDismissICloudSyncPrompt: () -> Void
@@ -123,8 +124,22 @@ struct HomeView: View {
             }
 
             BottomActionDock {
-                AppActionButton(AppStrings.localized("打开网页文件"), scene: .sky) {
-                    onOpenImporter()
+                HStack(spacing: 12) {
+                    AppActionButton(
+                        AppStrings.localized("打开网页文件"),
+                        scene: .sky
+                    ) {
+                        onOpenImporter()
+                    }
+
+                    AppActionIconButton(
+                        coloredIconAssetName: "IconKeyGold",
+                        scene: .neutralDark,
+                        size: .large
+                    ) {
+                        onOpenURLImporter()
+                    }
+                    .accessibilityLabel(AppStrings.localized("输入暗号"))
                 }
             }
 
@@ -1063,6 +1078,7 @@ private struct HomeGridMetrics {
             searchResults: { _, _ in [] },
             onSearchFullContent: {},
             onOpenImporter: {},
+            onOpenURLImporter: {},
             onOpenSettings: { _ in },
             onOpenProEntitlement: {},
             onDismissICloudSyncPrompt: {},

@@ -1,8 +1,120 @@
+import Foundation
 import PhotosUI
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 import WidgetKit
+
+private let remoteWebPageImportHubBaseURL = URL(string: "https://hub.htmlkeep.com/s/")!
+private let remoteWebPageImportMaximumByteCount: Int64 = 200_000_000
+
+private enum RemoteWebPageImportError: LocalizedError {
+    case emptyInput
+    case invalidInput
+    case badStatus(Int)
+    case downloadFailed(String)
+    case missingDownload
+    case fileTooLarge
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyInput:
+            return AppStrings.localized("请输入 Hub 暗号。")
+        case .invalidInput:
+            return AppStrings.localized("请输入有效的 Hub 暗号。")
+        case .badStatus(let statusCode):
+            return String(
+                format: AppStrings.localized("无法下载这个暗号。服务器返回 %@。"),
+                "\(statusCode)"
+            )
+        case .downloadFailed(let message):
+            return String(
+                format: AppStrings.localized("无法下载这个暗号。%@"),
+                message
+            )
+        case .missingDownload:
+            return AppStrings.localized("没有下载到可导入的文件。")
+        case .fileTooLarge:
+            return String(
+                format: AppStrings.localized("这个文件太大，无法导入。请选择不超过 %@ 的文件。"),
+                ByteCountFormatter.string(fromByteCount: remoteWebPageImportMaximumByteCount, countStyle: .file)
+            )
+        }
+    }
+}
+
+private enum RemoteWebPageImportDownloader {
+    static func hubCodeURL(from rawInput: String) throws -> URL {
+        let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else {
+            throw RemoteWebPageImportError.emptyInput
+        }
+
+        guard input.range(of: #"^[0-9]{6,12}$"#, options: .regularExpression) != nil else {
+            throw RemoteWebPageImportError.invalidInput
+        }
+
+        return remoteWebPageImportHubBaseURL.appendingPathComponent(input, isDirectory: false)
+    }
+
+    static func download(from remoteURL: URL) async throws -> URL {
+        let downloadedURL: URL
+        let response: URLResponse
+        do {
+            (downloadedURL, response) = try await URLSession.shared.download(from: remoteURL)
+        } catch {
+            throw RemoteWebPageImportError.downloadFailed(error.localizedDescription)
+        }
+
+        if let httpResponse = response as? HTTPURLResponse,
+           !(200...299).contains(httpResponse.statusCode) {
+            throw RemoteWebPageImportError.badStatus(httpResponse.statusCode)
+        }
+
+        if response.expectedContentLength > remoteWebPageImportMaximumByteCount {
+            throw RemoteWebPageImportError.fileTooLarge
+        }
+
+        let temporaryFolderURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("HTMLKeep-URLImport-\(UUID().uuidString)", isDirectory: true)
+        let fileName = safeFileName(response: response, fallbackURL: response.url ?? remoteURL)
+        let destinationURL = temporaryFolderURL.appendingPathComponent(fileName, isDirectory: false)
+
+        try FileManager.default.createDirectory(at: temporaryFolderURL, withIntermediateDirectories: true)
+        try FileManager.default.moveItem(at: downloadedURL, to: destinationURL)
+
+        let byteCount = Int64((try? destinationURL.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        guard byteCount > 0 else {
+            try? FileManager.default.removeItem(at: temporaryFolderURL)
+            throw RemoteWebPageImportError.missingDownload
+        }
+        guard byteCount <= remoteWebPageImportMaximumByteCount else {
+            try? FileManager.default.removeItem(at: temporaryFolderURL)
+            throw RemoteWebPageImportError.fileTooLarge
+        }
+
+        return destinationURL
+    }
+
+    private static func safeFileName(response: URLResponse, fallbackURL: URL) -> String {
+        let suggestedName = response.suggestedFilename ?? fallbackURL.lastPathComponent
+        var fileName = suggestedName.removingPercentEncoding ?? suggestedName
+        fileName = fileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        fileName = fileName.components(separatedBy: CharacterSet(charactersIn: "/\\:")).joined(separator: "-")
+        if fileName.isEmpty {
+            fileName = "download"
+        }
+
+        let fileURL = URL(fileURLWithPath: fileName)
+        if fileURL.pathExtension.isEmpty,
+           let mimeType = response.mimeType,
+           let preferredExtension = UTType(mimeType: mimeType)?.preferredFilenameExtension {
+            fileName += ".\(preferredExtension)"
+        }
+
+        return fileName
+    }
+}
 
 @MainActor
 struct AppRootView: View {
@@ -28,6 +140,8 @@ struct AppRootView: View {
     @State private var importError: String?
     @State private var importPreview: WebPageImportPreview?
     @State private var fileImportRequestID = 0
+    @State private var isURLImportAlertPresented = false
+    @State private var urlImportDraft = ""
     @State private var isProjectIconSourceDialogPresented = false
     @State private var isProjectIconImporterPresented = false
     @State private var isProjectIconPhotoPickerPresented = false
@@ -83,6 +197,20 @@ struct AppRootView: View {
             .sheet(item: $rootPresentedSheet) { sheet in
                 settingsSheet(for: sheet, host: .root)
                     .preferredColorScheme(appearancePreference.colorScheme)
+            }
+            .alert(AppStrings.localized("输入暗号"), isPresented: $isURLImportAlertPresented) {
+                TextField(AppStrings.localized("Hub 暗号"), text: $urlImportDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.numberPad)
+                Button(AppStrings.localized("取消"), role: .cancel) {
+                    urlImportDraft = ""
+                }
+                Button(AppStrings.localized("导入")) {
+                    submitURLImport()
+                }
+            } message: {
+                Text(AppStrings.localized("输入 Hub 分享暗号。"))
             }
             .modifier(rootAlertModifier)
             .modifier(runtimePresentationModifier)
@@ -253,8 +381,8 @@ struct AppRootView: View {
             if let importPreview {
                 WebPageImportPreviewView(
                     preview: importPreview,
-                    onOpenImporter: {
-                        fileImportRequestID += 1
+                    onRetry: {
+                        retryImport(from: importPreview.source)
                     },
                     onReturnHome: {
                         routeFromExternalEntry {
@@ -384,6 +512,9 @@ struct AppRootView: View {
                     await library.buildFullContentSearchIndexIfNeeded()
                 },
                 onOpenImporter: { fileImportRequestID += 1 },
+                onOpenURLImporter: {
+                    presentURLImportAlert()
+                },
                 onOpenSettings: { anchorItem in
                     settingsPopoverAnchorItem = anchorItem
                     resetSettingsSidebarNavigation()
@@ -906,6 +1037,7 @@ struct AppRootView: View {
         let preview = WebPageImportPreview(
             id: previewID,
             sourceFileName: Self.fileImportDisplayName(for: url),
+            source: .file,
             phase: .importing
         )
 
@@ -919,6 +1051,55 @@ struct AppRootView: View {
             try? await Task.sleep(nanoseconds: 60_000_000)
             guard importPreview?.id == previewID else { return }
             await importAndOpen(url, previewID: previewID)
+        }
+    }
+
+    private func startURLImportFlow(from rawInput: String) {
+        releaseInitialRouteGate()
+
+        let remoteURL: URL
+        do {
+            remoteURL = try RemoteWebPageImportDownloader.hubCodeURL(from: rawInput)
+        } catch {
+            importError = error.localizedDescription
+            return
+        }
+
+        let previewID = UUID()
+        let preview = WebPageImportPreview(
+            id: previewID,
+            sourceFileName: remoteURL.absoluteString,
+            source: .url,
+            phase: .importing
+        )
+
+        routeFromExternalEntry {
+            importPreview = preview
+            router.popToRoot()
+        }
+
+        Task { @MainActor in
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 60_000_000)
+            guard importPreview?.id == previewID else { return }
+            await downloadAndImport(remoteURL, previewID: previewID)
+        }
+    }
+
+    private func downloadAndImport(_ remoteURL: URL, previewID: UUID) async {
+        do {
+            let localURL = try await RemoteWebPageImportDownloader.download(from: remoteURL)
+            defer {
+                try? FileManager.default.removeItem(at: localURL.deletingLastPathComponent())
+            }
+            guard importPreview?.id == previewID else { return }
+            await importAndOpen(localURL, previewID: previewID)
+        } catch {
+            if importPreview?.id == previewID {
+                importPreview?.phase = .failed(error.localizedDescription)
+            } else {
+                importError = error.localizedDescription
+            }
         }
     }
 
@@ -946,6 +1127,26 @@ struct AppRootView: View {
     private static func fileImportDisplayName(for url: URL) -> String {
         let name = url.lastPathComponent
         return name.removingPercentEncoding ?? name
+    }
+
+    private func retryImport(from source: WebPageImportPreviewSource) {
+        switch source {
+        case .file:
+            fileImportRequestID += 1
+        case .url:
+            presentURLImportAlert()
+        }
+    }
+
+    private func presentURLImportAlert() {
+        urlImportDraft = ""
+        isURLImportAlertPresented = true
+    }
+
+    private func submitURLImport() {
+        let rawInput = urlImportDraft
+        urlImportDraft = ""
+        startURLImportFlow(from: rawInput)
     }
 
     private func handleAgentImport(_ result: WebPageImportResult) {
@@ -2035,6 +2236,38 @@ private struct SettingsSidebar: View {
     }
 }
 
+private enum WebPageImportPreviewSource: Equatable {
+    case file
+    case url
+
+    var retryTitle: String {
+        switch self {
+        case .file:
+            return AppStrings.localized("打开文件")
+        case .url:
+            return AppStrings.localized("重新输入暗号")
+        }
+    }
+
+    var retrySystemImage: String {
+        switch self {
+        case .file:
+            return "doc.badge.plus"
+        case .url:
+            return "number"
+        }
+    }
+
+    var importingDetail: String {
+        switch self {
+        case .file:
+            return AppStrings.localized("正在整理这个文件，请稍等。")
+        case .url:
+            return AppStrings.localized("正在下载并整理这个暗号，请稍等。")
+        }
+    }
+}
+
 private enum WebPageImportPreviewPhase: Equatable {
     case importing
     case failed(String)
@@ -2043,12 +2276,13 @@ private enum WebPageImportPreviewPhase: Equatable {
 private struct WebPageImportPreview: Identifiable, Equatable {
     let id: UUID
     let sourceFileName: String
+    let source: WebPageImportPreviewSource
     var phase: WebPageImportPreviewPhase
 }
 
 private struct WebPageImportPreviewView: View {
     let preview: WebPageImportPreview
-    let onOpenImporter: () -> Void
+    let onRetry: () -> Void
     let onReturnHome: () -> Void
 
     var body: some View {
@@ -2084,7 +2318,7 @@ private struct WebPageImportPreviewView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Text(AppStrings.localized("正在整理这个文件，请稍等。"))
+            Text(preview.source.importingDetail)
                 .font(.system(size: 13))
                 .foregroundStyle(AppTheme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -2114,11 +2348,11 @@ private struct WebPageImportPreviewView: View {
             }
 
             AppActionButton(
-                AppStrings.localized("打开网页文件"),
-                systemImage: "doc.badge.plus",
+                preview.source.retryTitle,
+                systemImage: preview.source.retrySystemImage,
                 scene: .sky,
                 size: .medium,
-                action: onOpenImporter
+                action: onRetry
             )
 
             AppActionButton(

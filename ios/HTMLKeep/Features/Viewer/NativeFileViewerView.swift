@@ -15,13 +15,13 @@ struct NativeFileViewerView: View {
     var onPermanentlyDeletePage: (() -> Void)? = nil
 
     @State private var previewPage: NativeFilePreviewItem?
-    @State private var isActionsPopoverPresented = false
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
-    @State private var isDeleteAlertPresented = false
     @State private var isPermanentDeleteAlertPresented = false
     @State private var isRestoreErrorPresented = false
     @State private var sharePayload: SharePayload?
+    @State private var isHubShareCodeSheetPresented = false
+    @State private var hubShareCache: WebPageHubShareCache.ValidShare?
     @State private var isPreparingShare = false
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
@@ -52,25 +52,35 @@ struct NativeFileViewerView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if !isRecentlyDeletedViewer {
-                    Button {
-                        isActionsPopoverPresented = true
+                    Menu {
+                        nativeFileViewerActionsMenuContent
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AppStrings.localized("更多操作"))
-                    .popover(
-                        isPresented: $isActionsPopoverPresented,
-                        attachmentAnchor: .rect(.bounds),
-                        arrowEdge: .top
-                    ) {
-                        actionsPopover
-                    }
                 }
             }
         }
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(activityItems: [payload.url])
+        }
+        .sheet(isPresented: $isHubShareCodeSheetPresented) {
+            HubShareCodeSheet(
+                projectTitle: page.title,
+                projectFolderURL: folderURL,
+                cachedShare: hubShareCache,
+                onCacheChanged: { hubShareCache = $0 }
+            ) {
+                let projectFolderURL = folderURL
+                let projectTitle = page.title
+                return try await Task.detached(priority: .userInitiated) {
+                    try WebPageShareExporter().shareURL(
+                        forProjectFolder: projectFolderURL,
+                        preferredName: projectTitle
+                    )
+                }.value
+            }
         }
         .navigationDestination(isPresented: previewPageBinding) {
             if let previewPage {
@@ -89,14 +99,6 @@ struct NativeFileViewerView: View {
             .disabled(normalizedDraftProjectTitle.isEmpty)
         }
         .background(SystemAlertTextFieldClearButtonInstaller(isActive: isRenameAlertPresented))
-        .alert(AppStrings.localized("删除网页？"), isPresented: $isDeleteAlertPresented) {
-            Button(AppStrings.localized("取消"), role: .cancel) {}
-            Button(AppStrings.localized("删除"), role: .destructive) {
-                onDeletePage()
-            }
-        } message: {
-            Text(AppStrings.localized("这会将网页移到最近删除，之后可以在设置中恢复。"))
-        }
         .alert(
             AppStrings.localized("彻底删除网页？"),
             isPresented: $isPermanentDeleteAlertPresented
@@ -119,6 +121,9 @@ struct NativeFileViewerView: View {
             }
         } message: {
             Text(shareErrorMessage ?? "")
+        }
+        .task(id: page.id) {
+            await refreshHubShareCache()
         }
         .safeAreaInset(edge: .bottom) {
             if isRecentlyDeletedViewer {
@@ -169,43 +174,28 @@ struct NativeFileViewerView: View {
         }
     }
 
-    private var actionsPopover: some View {
-        VStack(spacing: 0) {
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("分享"),
-                systemImage: "square.and.arrow.up"
-            ) {
-                isActionsPopoverPresented = false
-                startSharingAfterActionsPopoverDismiss()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("重命名"),
-                systemImage: "pencil"
-            ) {
-                isActionsPopoverPresented = false
-                startRenamingAfterActionsPopoverDismiss()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("删除"),
-                systemImage: "trash",
-                role: .destructive
-            ) {
-                isActionsPopoverPresented = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    isDeleteAlertPresented = true
-                }
-            }
+    @ViewBuilder
+    private var nativeFileViewerActionsMenuContent: some View {
+        Button {
+            startSharingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
         }
-        .padding(.vertical)
-        .frame(width: min(UIScreen.main.bounds.width - 32, 260))
-        .fixedSize(horizontal: false, vertical: true)
-        .presentationCompactAdaptation(.popover)
+
+        Button {
+            startGeneratingHubCodeFromActionsMenu()
+        } label: {
+            Label(
+                AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
+                systemImage: "key.fill"
+            )
+        }
+
+        Button {
+            startRenamingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("重命名"), systemImage: "pencil")
+        }
     }
 
     private var recentlyDeletedActionDock: some View {
@@ -319,17 +309,26 @@ struct NativeFileViewerView: View {
         NativeFileKind.kind(for: file)
     }
 
-    private func startRenamingAfterActionsPopoverDismiss() {
+    private func startRenamingFromActionsMenu() {
         draftProjectTitle = page.title
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isRenameAlertPresented = true
-        }
+        isRenameAlertPresented = true
     }
 
-    private func startSharingAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            prepareShare()
-        }
+    private func startSharingFromActionsMenu() {
+        prepareShare()
+    }
+
+    private func startGeneratingHubCodeFromActionsMenu() {
+        isHubShareCodeSheetPresented = true
+    }
+
+    private func refreshHubShareCache() async {
+        let projectFolderURL = folderURL
+        let validShare = await Task.detached(priority: .utility) {
+            WebPageHubShareCache.validShare(in: projectFolderURL)
+        }.value
+        guard !Task.isCancelled else { return }
+        hubShareCache = validShare
     }
 
     private func prepareShare() {

@@ -1174,6 +1174,25 @@ enum AppActionButtonScene: CaseIterable, Identifiable {
     case neutralLightWithBorder
     case neutralDark
 
+    private static let neutralSurfaceTopGlowStart = Color(
+        lightHex: 0xFFFFFF,
+        darkHex: 0x2B3545,
+        lightOpacity: 1,
+        darkOpacity: 0.88
+    )
+    private static let neutralSurfaceTopGlowEnd = Color(
+        lightHex: 0xFFFFFF,
+        darkHex: 0x1A212B,
+        lightOpacity: 0,
+        darkOpacity: 0
+    )
+    private static let neutralTopSideStroke = Color(
+        lightHex: 0xEBEDF9,
+        darkHex: 0x334052,
+        lightOpacity: 1,
+        darkOpacity: 0.72
+    )
+
     var id: String { title }
 
     var title: String {
@@ -1287,10 +1306,10 @@ enum AppActionButtonScene: CaseIterable, Identifiable {
             )
         case .neutralLight:
             return AppActionButtonPalette(
-                fill: .white,
-                label: AppTheme.ink,
-                topGlowStart: .white,
-                topGlowEnd: Color(rgbaHex: 0xFFFFFF00),
+                fill: AppTheme.surfaceStrong,
+                label: AppTheme.contentPrimary,
+                topGlowStart: Self.neutralSurfaceTopGlowStart,
+                topGlowEnd: Self.neutralSurfaceTopGlowEnd,
                 innerShadow: AppTheme.surfaceDock,
                 stroke: AppTheme.surfaceBorder,
                 topSideStroke: nil
@@ -1299,11 +1318,11 @@ enum AppActionButtonScene: CaseIterable, Identifiable {
             return AppActionButtonPalette(
                 fill: AppTheme.surfaceStrong,
                 label: AppTheme.contentPrimary,
-                topGlowStart: AppTheme.surfaceStrong,
-                topGlowEnd: Color(rgbaHex: 0xFFFFFF00),
+                topGlowStart: Self.neutralSurfaceTopGlowStart,
+                topGlowEnd: Self.neutralSurfaceTopGlowEnd,
                 innerShadow: AppTheme.surfaceDock,
                 stroke: nil,
-                topSideStroke: AppTheme.surfaceDock
+                topSideStroke: Self.neutralTopSideStroke
             )
         case .neutralDark:
             return AppActionButtonPalette(
@@ -1482,19 +1501,22 @@ struct AppActionButtonSurface: View {
 }
 
 struct AppActionIconButton: View {
-    let systemImage: String
+    let coloredIconAssetName: String?
+    let systemImage: String?
     let scene: AppActionButtonScene
     let size: AppActionButtonSize
     let haptic: AppActionButtonHaptic
     let action: () -> Void
 
     init(
-        systemImage: String,
+        coloredIconAssetName: String? = nil,
+        systemImage: String? = nil,
         scene: AppActionButtonScene = .neutralLight,
         size: AppActionButtonSize = .medium,
         haptic: AppActionButtonHaptic = .defaultTap,
         action: @escaping () -> Void = {}
     ) {
+        self.coloredIconAssetName = coloredIconAssetName
         self.systemImage = systemImage
         self.scene = scene
         self.size = size
@@ -1506,10 +1528,16 @@ struct AppActionIconButton: View {
         let metrics = size.metrics
 
         Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: metrics.iconSize * 0.62, weight: .black))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityHidden(true)
+            ZStack {
+                if let coloredIconAssetName {
+                    AppColoredIcon(assetName: coloredIconAssetName, size: metrics.iconSize)
+                } else if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.system(size: metrics.iconSize * 0.62, weight: .black))
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .buttonStyle(AppActionButtonStyle(scene: scene, size: size, haptic: haptic))
         .frame(width: metrics.iconOnlyFrameSize, height: metrics.iconOnlyFrameSize)

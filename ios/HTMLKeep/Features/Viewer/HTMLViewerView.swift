@@ -1,5 +1,7 @@
+import CryptoKit
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 private let viewerTopChromeFadeDistance: CGFloat = 72
 private let viewerLoadingIndicatorDelay: TimeInterval = 0.35
@@ -23,9 +25,10 @@ struct HTMLViewerView: View {
     @State private var loadingIndicatorID: UUID?
     @State private var reloadToken = UUID()
     @State private var webPageZoomIndex = ViewerZoomScale.defaultIndex
-    @State private var isActionsPopoverPresented = false
     @State private var presentedViewerSheet: ViewerPresentedSheet?
     @State private var sharePayload: SharePayload?
+    @State private var isHubShareCodeSheetPresented = false
+    @State private var hubShareCache: WebPageHubShareCache.ValidShare?
     @State private var isPreparingShare = false
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
@@ -88,20 +91,13 @@ struct HTMLViewerView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if entryExists && !isPhoneLandscape && !isRecentlyDeletedViewer {
-                    Button {
-                        isActionsPopoverPresented = true
+                    Menu {
+                        htmlViewerActionsMenuContent
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(AppStrings.localized("更多操作"))
-                    .popover(
-                        isPresented: $isActionsPopoverPresented,
-                        attachmentAnchor: .rect(.bounds),
-                        arrowEdge: .top
-                    ) {
-                        actionsPopover
-                    }
                 }
             }
         }
@@ -113,6 +109,23 @@ struct HTMLViewerView: View {
         )
         .sheet(item: $sharePayload) { payload in
             ActivityShareSheet(activityItems: [payload.url])
+        }
+        .sheet(isPresented: $isHubShareCodeSheetPresented) {
+            HubShareCodeSheet(
+                projectTitle: page.title,
+                projectFolderURL: folderURL,
+                cachedShare: hubShareCache,
+                onCacheChanged: { hubShareCache = $0 }
+            ) {
+                let projectFolderURL = folderURL
+                let projectTitle = page.title
+                return try await Task.detached(priority: .userInitiated) {
+                    try WebPageShareExporter().shareURL(
+                        forProjectFolder: projectFolderURL,
+                        preferredName: projectTitle
+                    )
+                }.value
+            }
         }
         .sheet(item: $presentedViewerSheet) { sheet in
             switch sheet {
@@ -182,6 +195,9 @@ struct HTMLViewerView: View {
             .disabled(normalizedDraftProjectTitle.isEmpty)
         } message: {
             Text(AppStrings.localized("只会修改首页列表中的项目名称，不会更改 HTML 文件或页面标题。"))
+        }
+        .task(id: page.id) {
+            await refreshHubShareCache()
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
@@ -322,61 +338,46 @@ struct HTMLViewerView: View {
         }
     }
 
-    private var actionsPopover: some View {
-        VStack(spacing: 0) {
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("重新加载"),
-                systemImage: "arrow.clockwise"
-            ) {
-                isActionsPopoverPresented = false
-                reloadToken = UUID()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("缩放"),
-                systemImage: "plus.magnifyingglass"
-            ) {
-                isActionsPopoverPresented = false
-                startShowingZoomSheetAfterActionsPopoverDismiss()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("分享"),
-                systemImage: "square.and.arrow.up"
-            ) {
-                isActionsPopoverPresented = false
-                startSharingAfterActionsPopoverDismiss()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("重命名"),
-                systemImage: "pencil"
-            ) {
-                isActionsPopoverPresented = false
-                startRenamingAfterActionsPopoverDismiss()
-            }
-            Divider()
-                .padding(.leading, 52)
-
-            ViewerActionPopoverRow(
-                title: AppStrings.localized("清除缓存"),
-                systemImage: "trash",
-                role: .destructive
-            ) {
-                isActionsPopoverPresented = false
-                startClearingCacheAfterActionsPopoverDismiss()
-            }
+    @ViewBuilder
+    private var htmlViewerActionsMenuContent: some View {
+        Button {
+            reloadToken = UUID()
+        } label: {
+            Label(AppStrings.localized("重新加载"), systemImage: "arrow.clockwise")
         }
-        .padding(.vertical)
-        .frame(width: min(UIScreen.main.bounds.width - 32, 260))
-        .fixedSize(horizontal: false, vertical: true)
-        .presentationCompactAdaptation(.popover)
+
+        Button {
+            startShowingZoomSheetFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("缩放"), systemImage: "plus.magnifyingglass")
+        }
+
+        Button {
+            startSharingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
+        }
+
+        Button {
+            startGeneratingHubCodeFromActionsMenu()
+        } label: {
+            Label(
+                AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
+                systemImage: "key.fill"
+            )
+        }
+
+        Button {
+            startRenamingFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("重命名"), systemImage: "pencil")
+        }
+
+        Button {
+            startClearingCacheFromActionsMenu()
+        } label: {
+            Label(AppStrings.localized("清除缓存"), systemImage: "trash")
+        }
     }
 
     private func dismissViewer() {
@@ -534,11 +535,9 @@ struct HTMLViewerView: View {
         }
     }
 
-    private func startRenamingAfterActionsPopoverDismiss() {
+    private func startRenamingFromActionsMenu() {
         draftProjectTitle = currentProject.title
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isRenameAlertPresented = true
-        }
+        isRenameAlertPresented = true
     }
 
     private func handleLocalFileNavigation(_ url: URL) {
@@ -575,22 +574,29 @@ struct HTMLViewerView: View {
         webContentHasTopPinnedOverlay = prefersTopSafeArea
     }
 
-    private func startSharingAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            prepareShare()
-        }
+    private func startSharingFromActionsMenu() {
+        prepareShare()
     }
 
-    private func startShowingZoomSheetAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            presentedViewerSheet = .zoom
-        }
+    private func startGeneratingHubCodeFromActionsMenu() {
+        isHubShareCodeSheetPresented = true
     }
 
-    private func startClearingCacheAfterActionsPopoverDismiss() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isClearCacheAlertPresented = true
-        }
+    private func startShowingZoomSheetFromActionsMenu() {
+        presentedViewerSheet = .zoom
+    }
+
+    private func refreshHubShareCache() async {
+        let projectFolderURL = folderURL
+        let validShare = await Task.detached(priority: .utility) {
+            WebPageHubShareCache.validShare(in: projectFolderURL)
+        }.value
+        guard !Task.isCancelled else { return }
+        hubShareCache = validShare
+    }
+
+    private func startClearingCacheFromActionsMenu() {
+        isClearCacheAlertPresented = true
     }
 
     private func clearRuntimeStorage() {
@@ -601,6 +607,7 @@ struct HTMLViewerView: View {
                     projectFolderURL: folderURL
                 )
                 onRuntimeStorageChanged()
+                hubShareCache = nil
                 webViewIdentity = UUID()
                 reloadToken = UUID()
             } catch {
@@ -944,6 +951,718 @@ private struct ViewerZoomTickedSlider: UIViewRepresentable {
 struct SharePayload: Identifiable {
     let id = UUID()
     let url: URL
+}
+
+enum WebPageHubShareCache {
+    struct ValidShare: Equatable, Sendable {
+        let result: HubShareUploadResult
+        let projectFingerprint: String
+    }
+
+    private struct Snapshot: Codable, Equatable {
+        let schemaVersion: Int
+        let savedAt: Date
+        let projectFingerprint: String
+        let result: HubShareUploadResult
+    }
+
+    static func validShare(
+        in projectFolderURL: URL,
+        fileManager: FileManager = .default,
+        now: Date = .now
+    ) -> ValidShare? {
+        let url = cacheURL(in: projectFolderURL)
+        guard fileManager.fileExists(atPath: url.path) else {
+            return nil
+        }
+        guard let data = try? Data(contentsOf: url),
+              let snapshot = try? decoder.decode(Snapshot.self, from: data),
+              snapshot.schemaVersion == 1 else {
+            try? fileManager.removeItem(at: url)
+            return nil
+        }
+        guard !snapshot.result.isExpired(now: now) else {
+            try? fileManager.removeItem(at: url)
+            return nil
+        }
+        guard let currentFingerprint = try? projectFingerprint(in: projectFolderURL, fileManager: fileManager) else {
+            return nil
+        }
+        guard currentFingerprint == snapshot.projectFingerprint else {
+            try? fileManager.removeItem(at: url)
+            return nil
+        }
+        return ValidShare(result: snapshot.result, projectFingerprint: snapshot.projectFingerprint)
+    }
+
+    static func save(
+        result: HubShareUploadResult,
+        projectFingerprint: String,
+        in projectFolderURL: URL,
+        fileManager: FileManager = .default
+    ) throws -> ValidShare {
+        try fileManager.createDirectory(
+            at: runtimeDirectoryURL(in: projectFolderURL),
+            withIntermediateDirectories: true
+        )
+        let snapshot = Snapshot(
+            schemaVersion: 1,
+            savedAt: .now,
+            projectFingerprint: projectFingerprint,
+            result: result
+        )
+        let data = try encoder.encode(snapshot)
+        try data.write(to: cacheURL(in: projectFolderURL), options: [.atomic])
+        return ValidShare(result: result, projectFingerprint: projectFingerprint)
+    }
+
+    static func projectFingerprint(
+        in projectFolderURL: URL,
+        fileManager: FileManager = .default
+    ) throws -> String {
+        let relativePaths = try ZipArchiveWriter(fileManager: fileManager).regularFileRelativePaths(
+            in: projectFolderURL,
+            excluding: WebPageLibrary.isAppManagedProjectFilePath
+        )
+        guard !relativePaths.isEmpty else {
+            throw ZipArchiveWriterError.emptyFolder
+        }
+
+        var hasher = SHA256()
+        for relativePath in relativePaths {
+            let fileURL = projectFolderURL.appendingPathComponent(relativePath, isDirectory: false)
+            let fileData = try Data(contentsOf: fileURL)
+            hasher.update(data: Data("path:\(relativePath)\n".utf8))
+            hasher.update(data: Data("bytes:\(fileData.count)\n".utf8))
+            hasher.update(data: fileData)
+            hasher.update(data: Data([0]))
+        }
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func runtimeDirectoryURL(in projectFolderURL: URL) -> URL {
+        projectFolderURL.appendingPathComponent(WebPageRuntimeStorage.directoryName, isDirectory: true)
+    }
+
+    private static func cacheURL(in projectFolderURL: URL) -> URL {
+        runtimeDirectoryURL(in: projectFolderURL)
+            .appendingPathComponent("hub-share.json", isDirectory: false)
+    }
+
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+}
+
+struct HubShareCodeSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let projectTitle: String
+    let projectFolderURL: URL
+    let onCacheChanged: (WebPageHubShareCache.ValidShare?) -> Void
+    let prepareShareURL: () async throws -> URL
+
+    @State private var phase: HubShareCodePhase
+    @State private var uploadTask: Task<Void, Never>?
+    @State private var isCopied = false
+
+    init(
+        projectTitle: String,
+        projectFolderURL: URL,
+        cachedShare: WebPageHubShareCache.ValidShare?,
+        onCacheChanged: @escaping (WebPageHubShareCache.ValidShare?) -> Void,
+        prepareShareURL: @escaping () async throws -> URL
+    ) {
+        self.projectTitle = projectTitle
+        self.projectFolderURL = projectFolderURL
+        self.onCacheChanged = onCacheChanged
+        self.prepareShareURL = prepareShareURL
+        _phase = State(initialValue: cachedShare.map { .completed($0.result) } ?? .confirm)
+    }
+
+    private var sheetHeight: CGFloat {
+        switch phase {
+        case .confirm:
+            return 448
+        case .uploading:
+            return 300
+        case .completed:
+            return 472
+        case .failed:
+            return 352
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    content
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 22)
+                .padding(.top, 18)
+                .padding(.bottom, 28)
+            }
+            .navigationTitle(AppStrings.localized(phase.isCompleted ? "查看暗号" : "生成暗号"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .disabled(phase.isWorking)
+                    .accessibilityLabel(AppStrings.localized("关闭"))
+                }
+            }
+        }
+        .presentationDetents([.height(sheetHeight)])
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(phase.isWorking)
+        .onDisappear {
+            uploadTask?.cancel()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch phase {
+        case .confirm:
+            confirmContent
+        case let .uploading(progress):
+            uploadingContent(progress: progress)
+        case let .completed(result):
+            completedContent(result: result)
+        case let .failed(message):
+            failedContent(message: message)
+        }
+    }
+
+    private var confirmContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HubShareCodeHeroIcon(systemImage: "key.fill")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(AppStrings.localized("生成分享暗号"))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.contentPrimary)
+
+                Text(AppStrings.localized("上传后这份文件会公开，任何拿到暗号或链接的人都可以下载。"))
+                    .font(.system(size: 15))
+                    .lineSpacing(3)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                HubShareCodeInfoRow(
+                    systemImage: "calendar.badge.clock",
+                    text: AppStrings.localized("默认保留 30 天，过期后 Hub 会自动清理。")
+                )
+                HubShareCodeInfoRow(
+                    systemImage: "doc.on.doc",
+                    text: AppStrings.localized("同一份文件重复生成时，会直接复用已有暗号。")
+                )
+            }
+
+            HubShareCodePrimaryButton(
+                title: AppStrings.localized("确认生成"),
+                systemImage: "arrow.up.circle.fill",
+                action: startUpload
+            )
+        }
+    }
+
+    private func uploadingContent(progress: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HubShareCodeHeroIcon(systemImage: "arrow.up.circle.fill")
+
+            VStack(alignment: .leading, spacing: 10) {
+                if let progress {
+                    ProgressView(value: progress, total: 1)
+                        .tint(AppTheme.deepWater)
+                    Text(String(format: AppStrings.localized("正在上传 %d%%"), Int((progress * 100).rounded())))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppTheme.contentPrimary)
+                } else {
+                    ProgressView()
+                        .tint(AppTheme.deepWater)
+                    Text(AppStrings.localized("正在准备上传..."))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppTheme.contentPrimary)
+                }
+
+                Text(AppStrings.localized("请保持 HTML Keep 在前台，上传完成后会显示暗号。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+    }
+
+    private func completedContent(result: HubShareUploadResult) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HubShareCodeHeroIcon(systemImage: "checkmark.circle.fill")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(AppStrings.localized("暗号已生成"))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.contentPrimary)
+
+                Text(AppStrings.localized("这个暗号默认保留 30 天。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            Text(result.code)
+                .font(.system(size: 46, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(AppTheme.deepWater)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 14)
+                .background(AppTheme.surfaceInset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(AppTheme.surfaceBorder, lineWidth: 1)
+                }
+                .accessibilityLabel(AppStrings.localized("暗号已生成"))
+                .accessibilityValue(result.code)
+
+            Text(result.detailText)
+                .font(.system(size: 14))
+                .foregroundStyle(AppTheme.textSecondary)
+
+            HubShareCodePrimaryButton(
+                title: isCopied ? AppStrings.localized("已复制") : AppStrings.localized("复制分享文案"),
+                systemImage: isCopied ? "checkmark" : "doc.on.doc",
+                action: {
+                    UIPasteboard.general.string = result.copyText(projectTitle: projectTitle)
+                    isCopied = true
+                }
+            )
+
+            Button(AppStrings.localized("完成")) {
+                dismiss()
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
+            .foregroundStyle(AppTheme.contentPrimary)
+        }
+    }
+
+    private func failedContent(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HubShareCodeHeroIcon(systemImage: "exclamationmark.triangle.fill", isWarning: true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(AppStrings.localized("生成失败"))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.contentPrimary)
+
+                Text(message)
+                    .font(.system(size: 15))
+                    .lineSpacing(3)
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+
+            HubShareCodePrimaryButton(
+                title: AppStrings.localized("重新生成"),
+                systemImage: "arrow.clockwise",
+                action: startUpload
+            )
+        }
+    }
+
+    private func startUpload() {
+        guard !phase.isWorking else { return }
+
+        isCopied = false
+        uploadTask?.cancel()
+        uploadTask = Task {
+            await runUpload()
+        }
+    }
+
+    @MainActor
+    private func runUpload() async {
+        withAnimation(.snappy(duration: 0.2)) {
+            phase = .uploading(nil)
+        }
+
+        do {
+            let projectFolderURL = projectFolderURL
+            let projectFingerprint = try await Task.detached(priority: .utility) {
+                try WebPageHubShareCache.projectFingerprint(in: projectFolderURL)
+            }.value
+            let shareURL = try await prepareShareURL()
+            defer {
+                WebPageShareExporter().cleanupTemporaryExportIfNeeded(at: shareURL)
+            }
+
+            let result = try await HubShareCodeUploader().upload(
+                fileURL: shareURL,
+                retentionPolicy: "30d",
+                progress: { progress in
+                    Task { @MainActor in
+                        guard case .uploading = phase else { return }
+                        withAnimation(.linear(duration: 0.12)) {
+                            phase = .uploading(progress)
+                        }
+                    }
+                }
+            )
+
+            let cachedShare = try? WebPageHubShareCache.save(
+                result: result,
+                projectFingerprint: projectFingerprint,
+                in: projectFolderURL
+            )
+            if let cachedShare {
+                onCacheChanged(cachedShare)
+            }
+            withAnimation(.snappy(duration: 0.2)) {
+                phase = .completed(result)
+            }
+        } catch is CancellationError {
+        } catch {
+            let message = (error as? LocalizedError)?.errorDescription
+                ?? AppStrings.localized("暂时无法生成暗号，请稍后再试。")
+            withAnimation(.snappy(duration: 0.2)) {
+                phase = .failed(message)
+            }
+        }
+    }
+}
+
+private enum HubShareCodePhase: Equatable {
+    case confirm
+    case uploading(Double?)
+    case completed(HubShareUploadResult)
+    case failed(String)
+
+    var isWorking: Bool {
+        if case .uploading = self {
+            return true
+        }
+        return false
+    }
+
+    var isCompleted: Bool {
+        if case .completed = self {
+            return true
+        }
+        return false
+    }
+}
+
+private struct HubShareCodeHeroIcon: View {
+    let systemImage: String
+    var isWarning = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 24, weight: .bold))
+            .foregroundStyle(isWarning ? AppTheme.coral : AppTheme.deepWater)
+            .frame(width: 54, height: 54)
+            .background(AppTheme.surfaceInset, in: Circle())
+            .overlay {
+                Circle()
+                    .stroke(AppTheme.surfaceBorder, lineWidth: 1)
+            }
+    }
+}
+
+private struct HubShareCodeInfoRow: View {
+    let systemImage: String
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AppTheme.deepWater)
+                .frame(width: 20)
+
+            Text(text)
+                .font(.system(size: 14))
+                .lineSpacing(2)
+                .foregroundStyle(AppTheme.contentPrimary)
+        }
+    }
+}
+
+private struct HubShareCodePrimaryButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15, weight: .bold))
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(AppTheme.deepWater, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct HubShareUploadResult: Codable, Equatable, Sendable {
+    let code: String
+    let url: URL
+    let fileName: String
+    let byteSize: Int64
+    let expiresAt: String?
+    let deduplicated: Bool
+
+    var detailText: String {
+        let expiryText: String
+        if let expiresAt,
+           let date = ISO8601DateFormatter.htmlKeepHubDate(from: expiresAt) {
+            expiryText = DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
+        } else {
+            expiryText = AppStrings.localized("永久保存")
+        }
+
+        return "\(fileName) · \(Self.formatBytes(byteSize)) · \(expiryText)"
+    }
+
+    func isExpired(now: Date = .now) -> Bool {
+        guard let expiresAt else {
+            return false
+        }
+        guard let expiryDate = ISO8601DateFormatter.htmlKeepHubDate(from: expiresAt) else {
+            return true
+        }
+        return expiryDate <= now
+    }
+
+    func copyText(projectTitle: String) -> String {
+        let title = projectTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let safeTitle = title.isEmpty ? AppStrings.localized("网页") : title
+        return [
+            String(format: AppStrings.localized("我用 HTML Keep 分享了一个网页作品：%@"), safeTitle),
+            String(format: AppStrings.localized("打开 HTML Keep，点击首页底部右侧的「输入暗号」按钮，输入暗号：%@"), code),
+            String(format: AppStrings.localized("分享链接：%@"), url.absoluteString),
+            AppStrings.localized("这个暗号默认保留 30 天，过期后会自动清理。")
+        ].joined(separator: "\n")
+    }
+
+    private static func formatBytes(_ bytes: Int64) -> String {
+        if bytes >= 1_000_000 {
+            return String(format: "%.1f MB", Double(bytes) / 1_000_000)
+        }
+
+        if bytes >= 1_000 {
+            return String(format: "%.1f KB", Double(bytes) / 1_000)
+        }
+
+        return "\(bytes) bytes"
+    }
+}
+
+private final class HubShareCodeUploader {
+    private static let uploadURL = URL(string: "https://hub.htmlkeep.com/api/upload")!
+    private static let maxUploadBytes: Int64 = 25_000_000
+
+    func upload(
+        fileURL: URL,
+        retentionPolicy: String,
+        progress: @escaping @Sendable (Double) -> Void
+    ) async throws -> HubShareUploadResult {
+        let fileSize = try Self.fileSize(at: fileURL)
+        guard fileSize <= Self.maxUploadBytes else {
+            throw HubShareCodeUploadError.fileTooLarge(Self.formatBytes(Self.maxUploadBytes))
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        let body = try Self.multipartBody(
+            fileURL: fileURL,
+            fileName: fileURL.lastPathComponent,
+            contentType: Self.contentType(for: fileURL),
+            retentionPolicy: retentionPolicy,
+            boundary: boundary
+        )
+        var request = URLRequest(url: Self.uploadURL)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let delegate = HubShareCodeUploadProgressDelegate(progress: progress)
+        let session = URLSession(configuration: .ephemeral, delegate: delegate, delegateQueue: nil)
+        defer {
+            session.invalidateAndCancel()
+        }
+
+        let (data, response) = try await session.upload(for: request, from: body)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw HubShareCodeUploadError.invalidResponse
+        }
+
+        let decoder = JSONDecoder()
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let serverError = try? decoder.decode(HubShareCodeServerError.self, from: data)
+            throw HubShareCodeUploadError.server(serverError?.message ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode))
+        }
+
+        do {
+            return try decoder.decode(HubShareUploadResult.self, from: data)
+        } catch {
+            throw HubShareCodeUploadError.invalidResponse
+        }
+    }
+
+    private static func multipartBody(
+        fileURL: URL,
+        fileName: String,
+        contentType: String,
+        retentionPolicy: String,
+        boundary: String
+    ) throws -> Data {
+        var body = Data()
+        body.appendMultipartField(name: "retention", value: retentionPolicy, boundary: boundary)
+        body.appendMultipartFile(
+            name: "file",
+            fileName: fileName,
+            contentType: contentType,
+            data: try Data(contentsOf: fileURL),
+            boundary: boundary
+        )
+        body.appendUTF8("--\(boundary)--\r\n")
+        return body
+    }
+
+    private static func fileSize(at fileURL: URL) throws -> Int64 {
+        let values = try fileURL.resourceValues(forKeys: [.fileSizeKey])
+        return Int64(values.fileSize ?? 0)
+    }
+
+    private static func contentType(for fileURL: URL) -> String {
+        if let mimeType = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType {
+            return mimeType
+        }
+
+        return "application/octet-stream"
+    }
+
+    private static func formatBytes(_ bytes: Int64) -> String {
+        if bytes >= 1_000_000 {
+            return String(format: "%.0f MB", Double(bytes) / 1_000_000)
+        }
+
+        if bytes >= 1_000 {
+            return String(format: "%.0f KB", Double(bytes) / 1_000)
+        }
+
+        return "\(bytes) bytes"
+    }
+}
+
+private final class HubShareCodeUploadProgressDelegate: NSObject, URLSessionTaskDelegate {
+    private let progress: @Sendable (Double) -> Void
+
+    init(progress: @escaping @Sendable (Double) -> Void) {
+        self.progress = progress
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didSendBodyData bytesSent: Int64,
+        totalBytesSent: Int64,
+        totalBytesExpectedToSend: Int64
+    ) {
+        guard totalBytesExpectedToSend > 0 else { return }
+        let value = min(max(Double(totalBytesSent) / Double(totalBytesExpectedToSend), 0), 1)
+        progress(value)
+    }
+}
+
+private struct HubShareCodeServerError: Decodable {
+    let message: String?
+}
+
+private enum HubShareCodeUploadError: LocalizedError {
+    case fileTooLarge(String)
+    case invalidResponse
+    case server(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .fileTooLarge(limit):
+            return String(
+                format: AppStrings.localized("这个文件超过 Hub 当前 %@ 的上传限制。"),
+                limit
+            )
+        case .invalidResponse:
+            return AppStrings.localized("Hub 返回了无法识别的响应。")
+        case let .server(message):
+            return String(
+                format: AppStrings.localized("无法上传这个文件。%@"),
+                message
+            )
+        }
+    }
+}
+
+private extension Data {
+    mutating func appendMultipartField(name: String, value: String, boundary: String) {
+        appendUTF8("--\(boundary)\r\n")
+        appendUTF8("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
+        appendUTF8("\(value)\r\n")
+    }
+
+    mutating func appendMultipartFile(
+        name: String,
+        fileName: String,
+        contentType: String,
+        data: Data,
+        boundary: String
+    ) {
+        let escapedFileName = fileName.replacingOccurrences(of: "\"", with: "'")
+        appendUTF8("--\(boundary)\r\n")
+        appendUTF8("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(escapedFileName)\"\r\n")
+        appendUTF8("Content-Type: \(contentType)\r\n\r\n")
+        append(data)
+        appendUTF8("\r\n")
+    }
+
+    mutating func appendUTF8(_ string: String) {
+        append(Data(string.utf8))
+    }
+}
+
+private extension ISO8601DateFormatter {
+    static let htmlKeepHub: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    static let htmlKeepHubWithoutFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static func htmlKeepHubDate(from value: String) -> Date? {
+        htmlKeepHub.date(from: value) ?? htmlKeepHubWithoutFractionalSeconds.date(from: value)
+    }
 }
 
 private struct ViewerNavigationBarChromeInstaller: UIViewControllerRepresentable {
@@ -1530,6 +2249,18 @@ struct WebPageShareExporter {
         return archiveURL
     }
 
+    func cleanupTemporaryExportIfNeeded(at shareURL: URL) {
+        let exportsURL = fileManager.temporaryDirectory
+            .appendingPathComponent("HTMLKeepShareExports", isDirectory: true)
+            .standardizedFileURL
+        let standardizedShareURL = shareURL.standardizedFileURL
+        guard standardizedShareURL.path.hasPrefix(exportsURL.path + "/") else {
+            return
+        }
+
+        try? fileManager.removeItem(at: standardizedShareURL.deletingLastPathComponent())
+    }
+
     private static func safeFileName(from title: String) -> String {
         let trimmed = title
             .components(separatedBy: .whitespacesAndNewlines)
@@ -1545,35 +2276,6 @@ struct WebPageShareExporter {
             .joined(separator: "-")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return sanitized.isEmpty ? fallback : sanitized
-    }
-}
-
-struct ViewerActionPopoverRow: View {
-    let title: String
-    let systemImage: String
-    var role: ButtonRole? = nil
-    let action: () -> Void
-
-    var body: some View {
-        Button(role: role, action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 24)
-
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(role == .destructive ? Color(uiColor: .systemRed) : Color.primary)
-        .accessibilityLabel(title)
     }
 }
 
