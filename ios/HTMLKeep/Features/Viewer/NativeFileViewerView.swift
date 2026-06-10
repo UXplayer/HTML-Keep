@@ -953,13 +953,14 @@ private struct NativeImageReaderView: View {
             .accessibilityLabel(AppStrings.localized("返回"))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(currentImage.fileName)
-                    .font(.system(size: 15, weight: .semibold))
+                Text(pageCountText)
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                Text(pageCountText)
+                Text(currentImage.fileName)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(1)
             }
 
             Spacer()
