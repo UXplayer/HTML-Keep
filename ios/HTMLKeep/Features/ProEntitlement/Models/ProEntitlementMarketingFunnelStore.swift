@@ -25,6 +25,8 @@ final class ProEntitlementMarketingFunnelStore: ObservableObject {
     var isInCooldown: Bool { false }
     var promoSnackbarCountdownText: String { "" }
     var discountCountdownText: String { "" }
+    func promoSnackbarCountdownText(at date: Date) -> String { "" }
+    func discountCountdownText(at date: Date) -> String { "" }
     var debugMarketingFunnelSummary: String {
         AppStrings.localized("HTML Keep 社区版")
     }

@@ -773,36 +773,38 @@ struct AppRootView: View {
             if shouldShowProEntitlementPromoSnackbar {
                 VStack {
                     Spacer()
-                    Group {
-                    #if HTMLKEEP_COMMUNITY
-                        ProEntitlementPromoSnackbar(
-                            discountText: proEntitlementStore.discountSnackbarDiscountText,
-                            fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
-                            compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
-                            fallbackText: proEntitlementStore.discountSnackbarFallbackText,
-                            remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText,
-                            action: {
-                                presentProEntitlement()
-                            },
-                            closeAction: {
-                                proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
-                            }
-                        )
-                    #else
-                        HomePromoSnackbar(
-                            discountText: proEntitlementStore.discountSnackbarDiscountText,
-                            fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
-                            compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
-                            fallbackText: proEntitlementStore.discountSnackbarFallbackText,
-                            remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText,
-                            action: {
-                                presentProEntitlement()
-                            },
-                            closeAction: {
-                                proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
-                            }
-                        )
-                    #endif
+                    TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                        Group {
+                        #if HTMLKEEP_COMMUNITY
+                            ProEntitlementPromoSnackbar(
+                                discountText: proEntitlementStore.discountSnackbarDiscountText,
+                                fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
+                                compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
+                                fallbackText: proEntitlementStore.discountSnackbarFallbackText,
+                                remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText(at: timeline.date),
+                                action: {
+                                    presentProEntitlement()
+                                },
+                                closeAction: {
+                                    proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
+                                }
+                            )
+                        #else
+                            HomePromoSnackbar(
+                                discountText: proEntitlementStore.discountSnackbarDiscountText,
+                                fullOfferText: proEntitlementStore.discountSnackbarFullOfferText,
+                                compactOfferText: proEntitlementStore.discountSnackbarCompactOfferText,
+                                fallbackText: proEntitlementStore.discountSnackbarFallbackText,
+                                remainingText: proEntitlementMarketingFunnelStore.promoSnackbarCountdownText(at: timeline.date),
+                                action: {
+                                    presentProEntitlement()
+                                },
+                                closeAction: {
+                                    proEntitlementMarketingFunnelStore.dismissPromoSnackbarForCurrentSession()
+                                }
+                            )
+                        #endif
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 106)
