@@ -788,6 +788,7 @@ private struct NativeImageReaderView: View {
         .toolbar(.hidden, for: .navigationBar)
         .statusBarHidden(!isChromeVisible)
         .background(Color.black)
+        .background(NativeImageReaderInteractivePopRestorer())
     }
 
     private var chromeBar: some View {
@@ -838,6 +839,97 @@ private struct NativeImageReaderView: View {
             selectedIndex + 1,
             sequence.images.count
         )
+    }
+}
+
+private struct NativeImageReaderInteractivePopRestorer: UIViewControllerRepresentable {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIViewController(context: Context) -> Controller {
+        Controller(coordinator: context.coordinator)
+    }
+
+    func updateUIViewController(_ controller: Controller, context: Context) {
+        controller.coordinator = context.coordinator
+        controller.installIfPossible()
+    }
+
+    final class Controller: UIViewController {
+        weak var coordinator: Coordinator?
+
+        init(coordinator: Coordinator) {
+            self.coordinator = coordinator
+            super.init(nibName: nil, bundle: nil)
+            view.backgroundColor = .clear
+            view.isUserInteractionEnabled = false
+        }
+
+        @available(*, unavailable)
+        required init?(coder _: NSCoder) {
+            nil
+        }
+
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            installIfPossible()
+        }
+
+        override func viewDidLayoutSubviews() {
+            super.viewDidLayoutSubviews()
+            installIfPossible()
+        }
+
+        func installIfPossible() {
+            guard let navigationController else { return }
+            coordinator?.install(on: navigationController)
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        private weak var navigationController: UINavigationController?
+        private weak var previousDelegate: UIGestureRecognizerDelegate?
+
+        deinit {
+            restoreDelegate()
+        }
+
+        func install(on navigationController: UINavigationController) {
+            guard let recognizer = navigationController.interactivePopGestureRecognizer else { return }
+
+            if self.navigationController !== navigationController {
+                self.navigationController = navigationController
+                previousDelegate = recognizer.delegate
+            } else if recognizer.delegate !== self, previousDelegate == nil {
+                previousDelegate = recognizer.delegate
+            }
+
+            recognizer.delegate = self
+            recognizer.isEnabled = navigationController.viewControllers.count > 1
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let navigationController,
+                  gestureRecognizer === navigationController.interactivePopGestureRecognizer,
+                  navigationController.viewControllers.count > 1,
+                  navigationController.transitionCoordinator == nil else {
+                return false
+            }
+
+            return true
+        }
+
+        private func restoreDelegate() {
+            guard let navigationController,
+                  let recognizer = navigationController.interactivePopGestureRecognizer,
+                  recognizer.delegate === self else {
+                return
+            }
+
+            recognizer.delegate = previousDelegate
+            recognizer.isEnabled = navigationController.viewControllers.count > 1
+        }
     }
 }
 
