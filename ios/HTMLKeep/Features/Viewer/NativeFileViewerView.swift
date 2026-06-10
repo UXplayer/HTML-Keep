@@ -731,14 +731,63 @@ private struct NativeFilePreviewPageView: View {
     }
 }
 
+private enum NativeImageReaderMode: String, CaseIterable, Identifiable {
+    case normal
+    case continuous
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .normal:
+            AppStrings.localized("imageReader.mode.normal")
+        case .continuous:
+            AppStrings.localized("imageReader.mode.continuous")
+        }
+    }
+}
+
+private enum NativeImageReaderDirection: String, CaseIterable, Identifiable {
+    case vertical
+    case horizontal
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .vertical:
+            AppStrings.localized("imageReader.direction.vertical")
+        case .horizontal:
+            AppStrings.localized("imageReader.direction.horizontal")
+        }
+    }
+}
+
+private struct NativeImageReaderVisibleItem: Equatable {
+    let index: Int
+    let distance: CGFloat
+}
+
+private struct NativeImageReaderVisibleItemPreferenceKey: PreferenceKey {
+    static var defaultValue: [NativeImageReaderVisibleItem] = []
+
+    static func reduce(value: inout [NativeImageReaderVisibleItem], nextValue: () -> [NativeImageReaderVisibleItem]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 private struct NativeImageReaderView: View {
     // Hide fractional pixel gaps exposed by SwiftUI paging boundaries without changing page order or scroll behavior.
     private let pageOverlap: CGFloat = 1 / UIScreen.main.scale
+    private let continuousCoordinateSpaceName = "NativeImageReaderContinuousScroll"
     let sequence: NativeImageSequence
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("nativeImageReaderMode") private var readerModeRaw = NativeImageReaderMode.normal.rawValue
+    @AppStorage("nativeImageReaderDirection") private var readerDirectionRaw = NativeImageReaderDirection.vertical.rawValue
     @State private var selectedIndex: Int
     @State private var selectedImageID: NativeImageSequenceItem.ID?
     @State private var isChromeVisible = true
+    @State private var isSettingsSheetPresented = false
 
     init(sequence: NativeImageSequence) {
         self.sequence = sequence
@@ -753,30 +802,7 @@ private struct NativeImageReaderView: View {
                 .ignoresSafeArea()
 
             GeometryReader { proxy in
-                ScrollView(.vertical) {
-                    LazyVStack(spacing: -pageOverlap) {
-                        ForEach(Array(sequence.images.enumerated()), id: \.element.id) { _, image in
-                            NativeImageReaderPage(url: image.url) {
-                                withAnimation(.easeInOut(duration: 0.18)) {
-                                    isChromeVisible.toggle()
-                                }
-                            }
-                            .frame(width: proxy.size.width, height: proxy.size.height)
-                            .id(image.id)
-                        }
-                    }
-                    .scrollTargetLayout()
-                }
-                .scrollIndicators(.hidden)
-                .scrollTargetBehavior(.paging)
-                .scrollPosition(id: $selectedImageID)
-                .onChange(of: selectedImageID) { _, newValue in
-                    guard let newValue,
-                          let index = sequence.images.firstIndex(where: { $0.id == newValue }) else {
-                        return
-                    }
-                    selectedIndex = index
-                }
+                readerContent(size: proxy.size)
             }
             .ignoresSafeArea()
 
@@ -789,6 +815,128 @@ private struct NativeImageReaderView: View {
         .statusBarHidden(!isChromeVisible)
         .background(Color.black)
         .background(NativeImageReaderInteractivePopRestorer())
+        .sheet(isPresented: $isSettingsSheetPresented) {
+            NativeImageReaderSettingsSheet(
+                mode: readerModeBinding,
+                direction: readerDirectionBinding
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func readerContent(size: CGSize) -> some View {
+        switch readerMode {
+        case .normal:
+            normalPagedReader(size: size)
+        case .continuous:
+            continuousReader(size: size)
+        }
+    }
+
+    @ViewBuilder
+    private func normalPagedReader(size: CGSize) -> some View {
+        switch readerDirection {
+        case .vertical:
+            ScrollView(.vertical) {
+                LazyVStack(spacing: -pageOverlap) {
+                    ForEach(Array(sequence.images.enumerated()), id: \.element.id) { _, image in
+                        NativeImageReaderPage(url: image.url) {
+                            toggleChromeVisibility()
+                        }
+                        .frame(width: size.width, height: size.height)
+                        .id(image.id)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $selectedImageID)
+            .onChange(of: selectedImageID) { _, newValue in
+                updateSelectedImage(for: newValue)
+            }
+        case .horizontal:
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: -pageOverlap) {
+                    ForEach(Array(sequence.images.enumerated()), id: \.element.id) { _, image in
+                        NativeImageReaderPage(url: image.url) {
+                            toggleChromeVisibility()
+                        }
+                        .frame(width: size.width, height: size.height)
+                        .id(image.id)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.paging)
+            .scrollPosition(id: $selectedImageID)
+            .onChange(of: selectedImageID) { _, newValue in
+                updateSelectedImage(for: newValue)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func continuousReader(size: CGSize) -> some View {
+        ScrollViewReader { scrollProxy in
+            switch readerDirection {
+            case .vertical:
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(sequence.images.enumerated()), id: \.element.id) { index, image in
+                            NativeImageContinuousReaderPage(
+                                url: image.url,
+                                direction: .vertical,
+                                containerSize: size
+                            ) {
+                                toggleChromeVisibility()
+                            }
+                            .id(image.id)
+                            .background(continuousVisibilityPreference(index: index, direction: .vertical, viewportSize: size))
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+                .coordinateSpace(name: continuousCoordinateSpaceName)
+                .onAppear {
+                    scrollToSelectedImage(with: scrollProxy)
+                }
+                .onChange(of: readerDirectionRaw) { _, _ in
+                    scrollToSelectedImage(with: scrollProxy)
+                }
+                .onPreferenceChange(NativeImageReaderVisibleItemPreferenceKey.self) { visibleItems in
+                    updateSelectedImage(from: visibleItems)
+                }
+            case .horizontal:
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 0) {
+                        ForEach(Array(sequence.images.enumerated()), id: \.element.id) { index, image in
+                            NativeImageContinuousReaderPage(
+                                url: image.url,
+                                direction: .horizontal,
+                                containerSize: size
+                            ) {
+                                toggleChromeVisibility()
+                            }
+                            .id(image.id)
+                            .background(continuousVisibilityPreference(index: index, direction: .horizontal, viewportSize: size))
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+                .coordinateSpace(name: continuousCoordinateSpaceName)
+                .onAppear {
+                    scrollToSelectedImage(with: scrollProxy)
+                }
+                .onChange(of: readerDirectionRaw) { _, _ in
+                    scrollToSelectedImage(with: scrollProxy)
+                }
+                .onPreferenceChange(NativeImageReaderVisibleItemPreferenceKey.self) { visibleItems in
+                    updateSelectedImage(from: visibleItems)
+                }
+            }
+        }
     }
 
     private var chromeBar: some View {
@@ -815,6 +963,17 @@ private struct NativeImageReaderView: View {
             }
 
             Spacer()
+
+            Button {
+                isSettingsSheetPresented = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(.black.opacity(0.34), in: Circle())
+            }
+            .accessibilityLabel(AppStrings.localized("imageReader.settings.title"))
         }
         .padding(.horizontal, 14)
         .padding(.top, 10)
@@ -829,6 +988,28 @@ private struct NativeImageReaderView: View {
         }
     }
 
+    private var readerMode: NativeImageReaderMode {
+        NativeImageReaderMode(rawValue: readerModeRaw) ?? .normal
+    }
+
+    private var readerDirection: NativeImageReaderDirection {
+        NativeImageReaderDirection(rawValue: readerDirectionRaw) ?? .vertical
+    }
+
+    private var readerModeBinding: Binding<NativeImageReaderMode> {
+        Binding(
+            get: { readerMode },
+            set: { readerModeRaw = $0.rawValue }
+        )
+    }
+
+    private var readerDirectionBinding: Binding<NativeImageReaderDirection> {
+        Binding(
+            get: { readerDirection },
+            set: { readerDirectionRaw = $0.rawValue }
+        )
+    }
+
     private var currentImage: NativeImageSequenceItem {
         sequence.images[safe: selectedIndex] ?? sequence.images[0]
     }
@@ -839,6 +1020,193 @@ private struct NativeImageReaderView: View {
             selectedIndex + 1,
             sequence.images.count
         )
+    }
+
+    private func toggleChromeVisibility() {
+        withAnimation(.easeInOut(duration: 0.18)) {
+            isChromeVisible.toggle()
+        }
+    }
+
+    private func updateSelectedImage(for imageID: NativeImageSequenceItem.ID?) {
+        guard let imageID,
+              let index = sequence.images.firstIndex(where: { $0.id == imageID }) else {
+            return
+        }
+        selectedIndex = index
+    }
+
+    private func updateSelectedImage(from visibleItems: [NativeImageReaderVisibleItem]) {
+        guard let nearestItem = visibleItems.min(by: { $0.distance < $1.distance }),
+              sequence.images.indices.contains(nearestItem.index) else {
+            return
+        }
+        selectedIndex = nearestItem.index
+        selectedImageID = sequence.images[nearestItem.index].id
+    }
+
+    private func scrollToSelectedImage(with proxy: ScrollViewProxy) {
+        guard let selectedImageID else { return }
+        DispatchQueue.main.async {
+            proxy.scrollTo(selectedImageID, anchor: .center)
+        }
+    }
+
+    private func continuousVisibilityPreference(
+        index: Int,
+        direction: NativeImageReaderDirection,
+        viewportSize: CGSize
+    ) -> some View {
+        GeometryReader { geometry in
+            let frame = geometry.frame(in: .named(continuousCoordinateSpaceName))
+            let distance: CGFloat = switch direction {
+            case .vertical:
+                abs(frame.midY - viewportSize.height / 2)
+            case .horizontal:
+                abs(frame.midX - viewportSize.width / 2)
+            }
+
+            Color.clear.preference(
+                key: NativeImageReaderVisibleItemPreferenceKey.self,
+                value: [NativeImageReaderVisibleItem(index: index, distance: distance)]
+            )
+        }
+    }
+}
+
+private struct NativeImageReaderSettingsSheet: View {
+    @Binding var mode: NativeImageReaderMode
+    @Binding var direction: NativeImageReaderDirection
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    segmentedPicker(
+                        label: AppStrings.localized("imageReader.mode.title"),
+                        selection: $mode,
+                        values: NativeImageReaderMode.allCases
+                    )
+
+                    segmentedPicker(
+                        label: AppStrings.localized("imageReader.direction.title"),
+                        selection: $direction,
+                        values: NativeImageReaderDirection.allCases
+                    )
+                }
+            }
+            .navigationTitle(AppStrings.localized("imageReader.settings.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(AppStrings.localized("关闭"))
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private func segmentedPicker<Value: CaseIterable & Identifiable>(
+        label: String,
+        selection: Binding<Value>,
+        values: Value.AllCases
+    ) -> some View where Value: Hashable, Value.AllCases: RandomAccessCollection, Value.ID == String {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(label)
+                .font(.system(size: 15, weight: .semibold))
+
+            Picker(label, selection: selection) {
+                ForEach(values) { value in
+                    Text(title(for: value))
+                        .tag(value)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func title<Value>(for value: Value) -> String {
+        if let mode = value as? NativeImageReaderMode {
+            return mode.title
+        }
+        if let direction = value as? NativeImageReaderDirection {
+            return direction.title
+        }
+        return ""
+    }
+}
+
+private struct NativeImageContinuousReaderPage: View {
+    let url: URL
+    let direction: NativeImageReaderDirection
+    let containerSize: CGSize
+    let onTap: () -> Void
+    @State private var image: UIImage?
+    @State private var didFail = false
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: imageFrame(for: image).width, height: imageFrame(for: image).height)
+                    .clipped()
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onTap)
+            } else if didFail {
+                Text(AppStrings.localized("无法预览这个文件。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .frame(width: placeholderFrame.width, height: placeholderFrame.height)
+                    .background(Color.black)
+            } else {
+                ProgressView()
+                    .tint(.white)
+                    .frame(width: placeholderFrame.width, height: placeholderFrame.height)
+                    .background(Color.black)
+            }
+        }
+        .task(id: url) {
+            didFail = false
+            image = await Task.detached(priority: .userInitiated) {
+                UIImage(contentsOfFile: url.path)
+            }.value
+            didFail = image == nil
+        }
+    }
+
+    private var placeholderFrame: CGSize {
+        switch direction {
+        case .vertical:
+            CGSize(width: containerSize.width, height: max(containerSize.width, containerSize.height * 0.5))
+        case .horizontal:
+            CGSize(width: max(containerSize.height, containerSize.width * 0.5), height: containerSize.height)
+        }
+    }
+
+    private func imageFrame(for image: UIImage) -> CGSize {
+        let imageWidth = max(image.size.width, 1)
+        let imageHeight = max(image.size.height, 1)
+        let aspectRatio = imageWidth / imageHeight
+
+        switch direction {
+        case .vertical:
+            let width = max(containerSize.width, 1)
+            return CGSize(width: width, height: width / aspectRatio)
+        case .horizontal:
+            let height = max(containerSize.height, 1)
+            return CGSize(width: height * aspectRatio, height: height)
+        }
     }
 }
 

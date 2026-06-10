@@ -162,6 +162,13 @@
 "这个压缩包里没有可预览的文件。" = "This archive does not contain previewable files.";
 "图片" = "Image";
 "imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "Image Settings";
+"imageReader.mode.title" = "View Mode";
+"imageReader.mode.normal" = "Normal";
+"imageReader.mode.continuous" = "Continuous";
+"imageReader.direction.title" = "Scroll Direction";
+"imageReader.direction.vertical" = "Vertical";
+"imageReader.direction.horizontal" = "Horizontal";
 "视频" = "Video";
 "音频" = "Audio";
 "文档" = "Document";

@@ -162,6 +162,13 @@
 "这个压缩包里没有可预览的文件。" = "这个压缩包里没有可预览的文件。";
 "图片" = "图片";
 "imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "图片设置";
+"imageReader.mode.title" = "浏览模式";
+"imageReader.mode.normal" = "普通";
+"imageReader.mode.continuous" = "连续";
+"imageReader.direction.title" = "滑动方向";
+"imageReader.direction.vertical" = "上下";
+"imageReader.direction.horizontal" = "左右";
 "视频" = "视频";
 "音频" = "音频";
 "文档" = "文档";
