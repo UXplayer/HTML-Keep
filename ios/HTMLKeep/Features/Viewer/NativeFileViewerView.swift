@@ -190,14 +190,18 @@ struct NativeFileViewerView: View {
     @ViewBuilder
     private var nativeFileViewerActionsMenuContent: some View {
         Button {
-            startSharingFromActionsMenu()
+            performActionsMenuAction {
+                startSharingFromActionsMenu()
+            }
         } label: {
             Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
         }
 
         if AppDistribution.current.supportsHubShareAuthoring {
             Button {
-                startGeneratingHubCodeFromActionsMenu()
+                performActionsMenuAction {
+                    startGeneratingHubCodeFromActionsMenu()
+                }
             } label: {
                 Label(
                     AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
@@ -207,7 +211,9 @@ struct NativeFileViewerView: View {
         }
 
         Button {
-            startRenamingFromActionsMenu()
+            performActionsMenuAction {
+                startRenamingFromActionsMenu()
+            }
         } label: {
             Label(AppStrings.localized("重命名"), systemImage: "pencil")
         }
@@ -357,6 +363,12 @@ struct NativeFileViewerView: View {
 
     private func startGeneratingHubCodeFromActionsMenu() {
         isHubShareCodeSheetPresented = true
+    }
+
+    private func performActionsMenuAction(_ action: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            action()
+        }
     }
 
     private func refreshHubShareCache() async {

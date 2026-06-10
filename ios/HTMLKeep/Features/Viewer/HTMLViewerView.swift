@@ -362,26 +362,34 @@ struct HTMLViewerView: View {
     @ViewBuilder
     private var htmlViewerActionsMenuContent: some View {
         Button {
-            reloadToken = UUID()
+            performActionsMenuAction {
+                reloadToken = UUID()
+            }
         } label: {
             Label(AppStrings.localized("重新加载"), systemImage: "arrow.clockwise")
         }
 
         Button {
-            startShowingZoomSheetFromActionsMenu()
+            performActionsMenuAction {
+                startShowingZoomSheetFromActionsMenu()
+            }
         } label: {
             Label(AppStrings.localized("缩放"), systemImage: "plus.magnifyingglass")
         }
 
         Button {
-            startSharingFromActionsMenu()
+            performActionsMenuAction {
+                startSharingFromActionsMenu()
+            }
         } label: {
             Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
         }
 
         if AppDistribution.current.supportsHubShareAuthoring {
             Button {
-                startGeneratingHubCodeFromActionsMenu()
+                performActionsMenuAction {
+                    startGeneratingHubCodeFromActionsMenu()
+                }
             } label: {
                 Label(
                     AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
@@ -391,13 +399,17 @@ struct HTMLViewerView: View {
         }
 
         Button {
-            startRenamingFromActionsMenu()
+            performActionsMenuAction {
+                startRenamingFromActionsMenu()
+            }
         } label: {
             Label(AppStrings.localized("重命名"), systemImage: "pencil")
         }
 
         Button {
-            startClearingCacheFromActionsMenu()
+            performActionsMenuAction {
+                startClearingCacheFromActionsMenu()
+            }
         } label: {
             Label(AppStrings.localized("清除缓存"), systemImage: "trash")
         }
@@ -634,6 +646,12 @@ struct HTMLViewerView: View {
 
     private func startClearingCacheFromActionsMenu() {
         isClearCacheAlertPresented = true
+    }
+
+    private func performActionsMenuAction(_ action: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            action()
+        }
     }
 
     private func clearRuntimeStorage() {

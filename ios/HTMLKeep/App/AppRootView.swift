@@ -1265,6 +1265,7 @@ struct AppRootView: View {
                     presentProEntitlement(from: host, replacingCurrentSheet: true)
                 }
             )
+            .environment(library)
         case .projectWidgetGuide:
             SettingsProjectWidgetGuideSheet()
         case .iCloudSyncProEntitlementGuide:
