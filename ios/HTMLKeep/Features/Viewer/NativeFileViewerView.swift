@@ -739,11 +739,14 @@ private struct NativeImageReaderView: View {
     let sequence: NativeImageSequence
     @Environment(\.dismiss) private var dismiss
     @State private var selectedIndex: Int
+    @State private var selectedImageID: NativeImageSequenceItem.ID?
     @State private var isChromeVisible = true
 
     init(sequence: NativeImageSequence) {
         self.sequence = sequence
-        _selectedIndex = State(initialValue: sequence.selectedIndex)
+        let initialIndex = sequence.selectedIndex
+        _selectedIndex = State(initialValue: initialIndex)
+        _selectedImageID = State(initialValue: sequence.images[safe: initialIndex]?.id)
     }
 
     var body: some View {
@@ -751,12 +754,30 @@ private struct NativeImageReaderView: View {
             Color.black
                 .ignoresSafeArea()
 
-            VerticalNativeImagePager(
-                images: sequence.images,
-                selectedIndex: $selectedIndex
-            ) {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    isChromeVisible.toggle()
+            GeometryReader { proxy in
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(sequence.images.enumerated()), id: \.element.id) { _, image in
+                            NativeImageReaderPage(url: image.url) {
+                                withAnimation(.easeInOut(duration: 0.18)) {
+                                    isChromeVisible.toggle()
+                                }
+                            }
+                            .frame(width: proxy.size.width, height: proxy.size.height)
+                            .id(image.id)
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $selectedImageID)
+                .onChange(of: selectedImageID) { _, newValue in
+                    guard let newValue,
+                          let index = sequence.images.firstIndex(where: { $0.id == newValue }) else {
+                        return
+                    }
+                    selectedIndex = index
                 }
             }
             .ignoresSafeArea()
@@ -819,111 +840,6 @@ private struct NativeImageReaderView: View {
             selectedIndex + 1,
             sequence.images.count
         )
-    }
-}
-
-private struct VerticalNativeImagePager: UIViewControllerRepresentable {
-    let images: [NativeImageSequenceItem]
-    @Binding var selectedIndex: Int
-    let onTap: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(parent: self)
-    }
-
-    func makeUIViewController(context: Context) -> UIPageViewController {
-        let controller = UIPageViewController(
-            transitionStyle: .scroll,
-            navigationOrientation: .vertical
-        )
-        controller.dataSource = context.coordinator
-        controller.delegate = context.coordinator
-        if let initialController = context.coordinator.controller(for: selectedIndex) {
-            controller.setViewControllers([initialController], direction: .forward, animated: false)
-        }
-        return controller
-    }
-
-    func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
-        context.coordinator.parent = self
-        guard let targetController = context.coordinator.controller(for: selectedIndex) else {
-            pageViewController.setViewControllers([], direction: .forward, animated: false)
-            return
-        }
-
-        let currentIndex = context.coordinator.currentIndex(in: pageViewController)
-        guard currentIndex != selectedIndex else { return }
-        let direction: UIPageViewController.NavigationDirection = selectedIndex > currentIndex ? .forward : .reverse
-        pageViewController.setViewControllers([targetController], direction: direction, animated: true)
-    }
-
-    final class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
-        var parent: VerticalNativeImagePager
-        private var controllers: [Int: NativeImageReaderHostingController] = [:]
-
-        init(parent: VerticalNativeImagePager) {
-            self.parent = parent
-        }
-
-        func controller(for index: Int) -> NativeImageReaderHostingController? {
-            guard parent.images.indices.contains(index) else { return nil }
-            let page = NativeImageReaderPage(url: parent.images[index].url, onTap: parent.onTap)
-            if let controller = controllers[index] {
-                controller.rootView = page
-                return controller
-            }
-            let controller = NativeImageReaderHostingController(index: index, rootView: page)
-            controller.view.backgroundColor = .black
-            controllers[index] = controller
-            return controller
-        }
-
-        func currentIndex(in pageViewController: UIPageViewController) -> Int {
-            guard let controller = pageViewController.viewControllers?.first as? NativeImageReaderHostingController else {
-                return parent.selectedIndex
-            }
-            return controller.index
-        }
-
-        func pageViewController(
-            _ pageViewController: UIPageViewController,
-            viewControllerBefore viewController: UIViewController
-        ) -> UIViewController? {
-            guard let controller = viewController as? NativeImageReaderHostingController else { return nil }
-            return self.controller(for: controller.index - 1)
-        }
-
-        func pageViewController(
-            _ pageViewController: UIPageViewController,
-            viewControllerAfter viewController: UIViewController
-        ) -> UIViewController? {
-            guard let controller = viewController as? NativeImageReaderHostingController else { return nil }
-            return self.controller(for: controller.index + 1)
-        }
-
-        func pageViewController(
-            _ pageViewController: UIPageViewController,
-            didFinishAnimating finished: Bool,
-            previousViewControllers: [UIViewController],
-            transitionCompleted completed: Bool
-        ) {
-            guard completed else { return }
-            parent.selectedIndex = currentIndex(in: pageViewController)
-        }
-    }
-}
-
-private final class NativeImageReaderHostingController: UIHostingController<NativeImageReaderPage> {
-    let index: Int
-
-    init(index: Int, rootView: NativeImageReaderPage) {
-        self.index = index
-        super.init(rootView: rootView)
-    }
-
-    @available(*, unavailable)
-    @MainActor dynamic required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
     }
 }
 
