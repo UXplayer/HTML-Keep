@@ -216,6 +216,7 @@ struct SettingsSideMenuContainer<MainContent: View, SidebarContent: View>: UIVie
     let presentationRequestID: Int
     let dismissalRequestID: Int
     let opensFromLeft: Bool
+    let allowsEdgePanGesture: Bool
     let preferredColorScheme: ColorScheme?
     let onWillPresent: () -> Void
     let onDismiss: () -> Void
@@ -226,6 +227,7 @@ struct SettingsSideMenuContainer<MainContent: View, SidebarContent: View>: UIVie
         presentationRequestID: Int,
         dismissalRequestID: Int,
         opensFromLeft: Bool,
+        allowsEdgePanGesture: Bool = true,
         preferredColorScheme: ColorScheme?,
         onWillPresent: @escaping () -> Void,
         onDismiss: @escaping () -> Void,
@@ -235,6 +237,7 @@ struct SettingsSideMenuContainer<MainContent: View, SidebarContent: View>: UIVie
         self.presentationRequestID = presentationRequestID
         self.dismissalRequestID = dismissalRequestID
         self.opensFromLeft = opensFromLeft
+        self.allowsEdgePanGesture = allowsEdgePanGesture
         self.preferredColorScheme = preferredColorScheme
         self.onWillPresent = onWillPresent
         self.onDismiss = onDismiss
@@ -251,7 +254,12 @@ struct SettingsSideMenuContainer<MainContent: View, SidebarContent: View>: UIVie
         viewController.onMenuWillPresent = onWillPresent
         viewController.onMenuDismissed = onDismiss
         viewController.preferredColorScheme = preferredColorScheme
-        viewController.configure(mainContent: mainContent, sidebarContent: sidebarContent, opensFromLeft: opensFromLeft)
+        viewController.configure(
+            mainContent: mainContent,
+            sidebarContent: sidebarContent,
+            opensFromLeft: opensFromLeft,
+            allowsEdgePanGesture: allowsEdgePanGesture
+        )
         context.coordinator.presentedRequestID = presentationRequestID
         context.coordinator.dismissedRequestID = dismissalRequestID
         return viewController
@@ -264,7 +272,12 @@ struct SettingsSideMenuContainer<MainContent: View, SidebarContent: View>: UIVie
         viewController.onMenuWillPresent = onWillPresent
         viewController.onMenuDismissed = onDismiss
         viewController.preferredColorScheme = preferredColorScheme
-        viewController.configure(mainContent: mainContent, sidebarContent: sidebarContent, opensFromLeft: opensFromLeft)
+        viewController.configure(
+            mainContent: mainContent,
+            sidebarContent: sidebarContent,
+            opensFromLeft: opensFromLeft,
+            allowsEdgePanGesture: allowsEdgePanGesture
+        )
 
         if dismissalRequestID != context.coordinator.dismissedRequestID {
             context.coordinator.dismissedRequestID = dismissalRequestID
@@ -294,6 +307,7 @@ final class SideMenuContainerViewController<MainContent: View, SidebarContent: V
     private var edgePanGestures: [UIScreenEdgePanGestureRecognizer] = []
     private var userInterfaceStyleRegistration: UITraitChangeRegistration?
     private var menuOpensFromLeft: Bool?
+    private var allowsEdgePanGesture = true
     var preferredColorScheme: ColorScheme? {
         didSet {
             applyPreferredUserInterfaceStyle()
@@ -319,7 +333,15 @@ final class SideMenuContainerViewController<MainContent: View, SidebarContent: V
         }
     }
 
-    func configure(mainContent: MainContent, sidebarContent: SidebarContent, opensFromLeft: Bool) {
+    func configure(
+        mainContent: MainContent,
+        sidebarContent: SidebarContent,
+        opensFromLeft: Bool,
+        allowsEdgePanGesture: Bool
+    ) {
+        let didChangeEdgePanPermission = self.allowsEdgePanGesture != allowsEdgePanGesture
+        self.allowsEdgePanGesture = allowsEdgePanGesture
+
         if let mainHostingController {
             mainHostingController.rootView = mainContent
         } else {
@@ -357,6 +379,10 @@ final class SideMenuContainerViewController<MainContent: View, SidebarContent: V
 
         applyPreferredUserInterfaceStyle()
         updateMenuWidth()
+
+        if didChangeEdgePanPermission {
+            refreshEdgeGestures()
+        }
     }
 
     func presentMenu(sidebarContent: SidebarContent, opensFromLeft: Bool) {
@@ -453,6 +479,11 @@ final class SideMenuContainerViewController<MainContent: View, SidebarContent: V
         edgePanGestures.removeAll()
     }
 
+    private func refreshEdgeGestures() {
+        removeEdgeGestures()
+        installEdgeGesturesIfNeeded()
+    }
+
     private func installDimmingViewIfNeeded() {
         guard dimmingView.superview == nil else { return }
 
@@ -470,7 +501,7 @@ final class SideMenuContainerViewController<MainContent: View, SidebarContent: V
     }
 
     private func installEdgeGesturesIfNeeded() {
-        guard edgePanGestures.isEmpty, sideMenuNavigationController != nil else { return }
+        guard allowsEdgePanGesture, edgePanGestures.isEmpty, sideMenuNavigationController != nil else { return }
         let menuSide: SideMenuManager.PresentDirection = menuOpensFromLeft == false ? .right : .left
 
         edgePanGestures.append(SideMenuManager.default.addScreenEdgePanGesturesToPresent(

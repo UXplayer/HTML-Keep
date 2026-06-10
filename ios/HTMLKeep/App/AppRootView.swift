@@ -716,6 +716,7 @@ struct AppRootView: View {
     private var rootContainer: some View {
         let effectiveLayoutDirection = layoutDirection ?? systemLayoutDirection
         let settingsMenuOpensFromLeft = effectiveLayoutDirection == .leftToRight
+        let allowsSettingsEdgePanGesture = router.path.isEmpty
         let usesIPadSettingsPopover = Self.usesIPadSettingsPopover
         let projectWidgetLaunchContext = projectWidgetLaunchStore.context
         let isProjectWidgetLaunchGateActive = projectWidgetLaunchContext != nil &&
@@ -753,6 +754,7 @@ struct AppRootView: View {
                             presentationRequestID: settingsMenuRequestID,
                             dismissalRequestID: settingsMenuDismissRequestID,
                             opensFromLeft: settingsMenuOpensFromLeft,
+                            allowsEdgePanGesture: allowsSettingsEdgePanGesture,
                             preferredColorScheme: appearancePreference.colorScheme,
                             onWillPresent: {
                                 resetSettingsSidebarNavigation()

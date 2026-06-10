@@ -649,10 +649,6 @@ private struct NativeImageThumbnailGridItem: View {
             }
             .aspectRatio(1, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
-            }
 
             Text(file.fileName)
                 .font(.system(size: 12, weight: .medium))
@@ -736,6 +732,8 @@ private struct NativeFilePreviewPageView: View {
 }
 
 private struct NativeImageReaderView: View {
+    // Hide fractional pixel gaps exposed by SwiftUI paging boundaries without changing page order or scroll behavior.
+    private let pageOverlap: CGFloat = 1 / UIScreen.main.scale
     let sequence: NativeImageSequence
     @Environment(\.dismiss) private var dismiss
     @State private var selectedIndex: Int
@@ -756,7 +754,7 @@ private struct NativeImageReaderView: View {
 
             GeometryReader { proxy in
                 ScrollView(.vertical) {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: -pageOverlap) {
                         ForEach(Array(sequence.images.enumerated()), id: \.element.id) { _, image in
                             NativeImageReaderPage(url: image.url) {
                                 withAnimation(.easeInOut(duration: 0.18)) {
