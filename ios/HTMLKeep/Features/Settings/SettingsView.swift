@@ -57,6 +57,7 @@ struct SettingsView: View {
     let onICloudSyncEnabled: () -> Void
     let onICloudSyncDisabled: () -> Void
     let onICloudSyncNow: () -> Void
+    let onOpenHubShares: () -> Void
     let onOpenRecentlyDeleted: () -> Void
     let onOpenProjectWidgetGuide: () -> Void
     let onOpenICloudSyncProEntitlementGuide: () -> Void
@@ -240,6 +241,19 @@ struct SettingsView: View {
             }
 
             Section {
+                if AppDistribution.current.supportsHubShareAuthoring {
+                    Button {
+                        onOpenHubShares()
+                    } label: {
+                        SettingsActionRow(
+                            title: AppStrings.localized("我的暗号"),
+                            leadingIconAssetName: "IconKeySilver"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .settingsListRowSurface()
+                }
+
                 Button {
                     onOpenRecentlyDeleted()
                 } label: {
@@ -1273,6 +1287,464 @@ struct RecentlyDeletedWebPagesView: View {
         formatter.dateFormat = AppStrings.localized("importDate.pastYearFormat")
         return formatter
     }()
+}
+
+struct SettingsHubSharesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let canUseExtendedRetention: Bool
+    let onOpenProEntitlement: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            SettingsHubSharesView(
+                canUseExtendedRetention: canUseExtendedRetention,
+                onOpenProEntitlement: onOpenProEntitlement
+            )
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    closeButton
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var closeButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
+        }
+        .accessibilityLabel(AppStrings.localized("关闭"))
+    }
+}
+
+private enum SettingsHubSharesPhase: Equatable {
+    case loading
+    case loaded([HubShareListItem])
+    case failed(String)
+}
+
+private enum HubSharePreviewRoute: Hashable {
+    case viewer(WebPage.ID, WebPageEntry.ID, String)
+    case fileViewer(WebPage.ID, String)
+}
+
+struct SettingsHubSharesView: View {
+    let canUseExtendedRetention: Bool
+    let onOpenProEntitlement: () -> Void
+
+    @Environment(WebPageLibrary.self) private var library
+    @State private var phase: SettingsHubSharesPhase = .loading
+    @State private var isScannerPresented = false
+    @State private var statusMessage: String?
+    @State private var selectedPreviewRoute: HubSharePreviewRoute?
+
+    var body: some View {
+        ZStack {
+            AppPageBackground()
+
+            content
+        }
+        .navigationTitle(AppStrings.localized("我的暗号"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isScannerPresented = true
+                } label: {
+                    Image(systemName: "qrcode.viewfinder")
+                }
+                .accessibilityLabel(AppStrings.localized("扫码登录 Hub"))
+            }
+        }
+        .task {
+            await loadShares()
+        }
+        .sheet(isPresented: $isScannerPresented) {
+            SettingsHubLoginScannerSheet(
+                clientIsPremium: canUseExtendedRetention,
+                onApproved: {
+                    statusMessage = AppStrings.localized("网页登录已确认。")
+                }
+            )
+        }
+        .navigationDestination(isPresented: selectedPreviewRouteBinding) {
+            if let selectedPreviewRoute {
+                previewDestination(for: selectedPreviewRoute)
+            } else {
+                SettingsHubShareMissingProjectView()
+            }
+        }
+        .alert(AppStrings.localized("Hub"), isPresented: statusMessageBinding) {
+            Button(AppStrings.localized("知道了"), role: .cancel) {
+                statusMessage = nil
+            }
+        } message: {
+            Text(statusMessage ?? "")
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch phase {
+        case .loading:
+            VStack(spacing: 12) {
+                ProgressView()
+                    .tint(AppTheme.deepWater)
+                Text(AppStrings.localized("正在读取我的暗号..."))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+        case .loaded(let shares):
+            if shares.isEmpty {
+                emptyState
+            } else {
+                sharesList(shares)
+            }
+        case .failed(let message):
+            AppSurfaceCard(isProminent: true) {
+                SectionHeader(AppStrings.localized("暂时无法读取"), systemImage: "exclamationmark.triangle")
+                Text(message)
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
+                AppActionButton(AppStrings.localized("重试"), scene: .sky) {
+                    Task {
+                        await loadShares()
+                    }
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private var emptyState: some View {
+        GeometryReader { proxy in
+            let columnWidth = min(proxy.size.width, recentlyDeletedEmptyStateMaxWidth)
+            let cardWidth = max(columnWidth - 40, 0)
+
+            ScrollView {
+                AppEmptyStateViewport(
+                    columnWidth: columnWidth,
+                    contentWidth: cardWidth,
+                    minHeight: proxy.size.height
+                ) {
+                    AppEmptyStatePrompt(
+                        title: AppStrings.localized("还没有暗号"),
+                        illustrationAssetName: "IconKeySilver",
+                        illustrationSpriteResourceName: "bear-idle-sheet",
+                        illustrationPlacement: .top,
+                        illustrationSize: 156,
+                        message: AppStrings.localized("打开任意网页项目，在更多菜单里点击“生成暗号”。生成后会显示在这里。"),
+                        contentIdentity: "hubShares.empty"
+                    )
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func sharesList(_ shares: [HubShareListItem]) -> some View {
+        List {
+            Section {
+                ForEach(shares) { share in
+                    shareRow(share, route: previewRoute(for: share))
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(.compact)
+        .scrollContentBackground(.hidden)
+        .refreshable {
+            await loadShares()
+        }
+    }
+
+    @ViewBuilder
+    private func shareRow(_ share: HubShareListItem, route: HubSharePreviewRoute?) -> some View {
+        HubShareListRow(
+            share: share,
+            onCopyCode: {
+                copyCode(share.code)
+            }
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let route {
+                selectedPreviewRoute = route
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func previewDestination(for route: HubSharePreviewRoute) -> some View {
+        switch route {
+        case let .viewer(pageID, entryID, code):
+            if let page = library.page(withID: pageID) {
+                let entry = library.entry(withID: entryID, in: page) ?? library.defaultEntry(for: page)
+                HTMLViewerView(
+                    page: page,
+                    entry: entry,
+                    hubSharePreviewCode: code,
+                    onRenameProject: { _, _ in },
+                    onDeletePage: {},
+                    onRuntimeStorageChanged: {},
+                    onOpenProEntitlement: onOpenProEntitlement
+                )
+            } else {
+                SettingsHubShareMissingProjectView()
+            }
+        case let .fileViewer(pageID, code):
+            if let page = library.page(withID: pageID) {
+                NativeFileViewerView(
+                    page: page,
+                    folderURL: library.folderURL(for: page),
+                    files: library.projectFiles(for: page),
+                    hubSharePreviewCode: code,
+                    onRenameProject: { _, _ in },
+                    onDeletePage: {},
+                    onOpenProEntitlement: onOpenProEntitlement
+                )
+            } else {
+                SettingsHubShareMissingProjectView()
+            }
+        }
+    }
+
+    private func previewRoute(for share: HubShareListItem) -> HubSharePreviewRoute? {
+        guard let page = library.pages.first(where: { page in
+            guard let validShare = WebPageHubShareCache.validShare(in: library.folderURL(for: page)) else {
+                return false
+            }
+            return validShare.result.code == share.code
+        }) else {
+            return nil
+        }
+
+        if page.opensInNativeFileViewer || page.opensInSingleFilePreview {
+            return .fileViewer(page.id, share.code)
+        }
+        let entry = library.defaultEntry(for: page)
+        return .viewer(page.id, entry.id, share.code)
+    }
+
+    private func copyCode(_ code: String) {
+        UIPasteboard.general.string = code
+        statusMessage = String(format: AppStrings.localized("已复制暗号：%@"), code)
+    }
+
+    private var statusMessageBinding: Binding<Bool> {
+        Binding(
+            get: { statusMessage != nil },
+            set: { if !$0 { statusMessage = nil } }
+        )
+    }
+
+    private var selectedPreviewRouteBinding: Binding<Bool> {
+        Binding(
+            get: { selectedPreviewRoute != nil },
+            set: { if !$0 { selectedPreviewRoute = nil } }
+        )
+    }
+
+    @MainActor
+    private func loadShares() async {
+        phase = .loading
+        do {
+            let recordName = try await HubUserIdentityProvider.currentCloudKitUserRecordName()
+            let shares = try await HubAPIClient.fetchMyShares(cloudKitUserRecordName: recordName)
+            phase = .loaded(shares)
+        } catch {
+            phase = .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+}
+
+private struct HubShareListRow: View {
+    let share: HubShareListItem
+    let onCopyCode: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button(action: onCopyCode) {
+                HStack(spacing: 8) {
+                    Text(share.code)
+                        .font(.system(size: 24, weight: .black, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(AppTheme.deepWater)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(AppTheme.deepWater)
+                }
+                .padding(.vertical, 2)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(format: AppStrings.localized("复制暗号 %@"), share.code))
+
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(share.displayTitle)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppTheme.contentPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(share.remainingTimeDisplayText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .foregroundStyle(AppTheme.textSecondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct SettingsHubShareMissingProjectView: View {
+    var body: some View {
+        ZStack {
+            AppPageBackground()
+
+            AppSurfaceCard(isProminent: true) {
+                SectionHeader(AppStrings.localized("网页文件缺失"), systemImage: "exclamationmark.triangle")
+                Text(AppStrings.localized("这个暗号对应的本机项目已经不在当前网页列表中。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(AppTheme.textSecondary)
+            }
+            .padding(20)
+        }
+        .navigationTitle(AppStrings.localized("预览"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private enum SettingsHubLoginScannerPhase: Equatable {
+    case scanning
+    case approving
+    case approved
+    case failed(String)
+
+    var message: String {
+        switch self {
+        case .scanning:
+            return AppStrings.localized("扫描 Hub 网页上的登录二维码。")
+        case .approving:
+            return AppStrings.localized("正在确认网页登录...")
+        case .approved:
+            return AppStrings.localized("网页登录已确认。")
+        case .failed(let message):
+            return message
+        }
+    }
+}
+
+private struct SettingsHubLoginScannerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let clientIsPremium: Bool
+    let onApproved: () -> Void
+
+    @State private var phase: SettingsHubLoginScannerPhase = .scanning
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                HubQRCodeScannerView(
+                    onCode: handleScannedCode,
+                    onError: { message in
+                        phase = .failed(message)
+                    }
+                )
+                .ignoresSafeArea()
+
+                scannerOverlay
+            }
+            .navigationTitle(AppStrings.localized("扫码登录 Hub"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .accessibilityLabel(AppStrings.localized("关闭"))
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var scannerOverlay: some View {
+        VStack(spacing: 10) {
+            if phase == .approving {
+                ProgressView()
+                    .tint(AppTheme.deepWater)
+            }
+
+            Text(phase.message)
+                .font(.system(size: 15, weight: .semibold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(AppTheme.contentPrimary)
+
+            if case .failed = phase {
+                AppActionButton(AppStrings.localized("知道了"), scene: .neutralDark) {
+                    dismiss()
+                }
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .frame(maxWidth: 420)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(20)
+    }
+
+    private func handleScannedCode(_ value: String) {
+        guard phase == .scanning else { return }
+        guard let challenge = HubLoginTokenParser.challenge(from: value) else {
+            phase = .failed(AppStrings.localized("这个二维码不是 HTML Keep Hub 登录码。"))
+            return
+        }
+
+        phase = .approving
+        Task {
+            await approve(challenge: challenge)
+        }
+    }
+
+    @MainActor
+    private func approve(challenge: HubLoginChallenge) async {
+        do {
+            let recordName = try await HubUserIdentityProvider.currentCloudKitUserRecordName()
+            try await HubAPIClient.approveLogin(
+                token: challenge.token,
+                approveURL: challenge.approveURL,
+                cloudKitUserRecordName: recordName,
+                clientIsPremium: clientIsPremium
+            )
+            phase = .approved
+            onApproved()
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            dismiss()
+        } catch {
+            phase = .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
 }
 
 struct RecentlyDeletedProjectPageListView: View {

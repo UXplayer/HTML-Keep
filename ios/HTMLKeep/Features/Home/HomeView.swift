@@ -133,8 +133,8 @@ struct HomeView: View {
                     }
 
                     AppActionIconButton(
-                        coloredIconAssetName: "IconKeyGold",
-                        scene: .neutralDark,
+                        coloredIconAssetName: "IconKeySilver",
+                        scene: .neutralLight,
                         size: .large
                     ) {
                         onOpenURLImporter()

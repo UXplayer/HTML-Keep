@@ -1,3 +1,5 @@
+import AVFoundation
+import CloudKit
 import Foundation
 import PhotosUI
 import SwiftUI
@@ -5,7 +7,6 @@ import UIKit
 import UniformTypeIdentifiers
 import WidgetKit
 
-private let remoteWebPageImportHubBaseURL = URL(string: "https://hub.htmlkeep.com/s/")!
 private let remoteWebPageImportMaximumByteCount: Int64 = 200_000_000
 
 private enum RemoteWebPageImportError: LocalizedError {
@@ -44,7 +45,7 @@ private enum RemoteWebPageImportError: LocalizedError {
 }
 
 private enum RemoteWebPageImportDownloader {
-    static func hubCodeURL(from rawInput: String) throws -> URL {
+    static func hubCodeURLs(from rawInput: String) throws -> [URL] {
         let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else {
             throw RemoteWebPageImportError.emptyInput
@@ -54,10 +55,24 @@ private enum RemoteWebPageImportDownloader {
             throw RemoteWebPageImportError.invalidInput
         }
 
-        return remoteWebPageImportHubBaseURL.appendingPathComponent(input, isDirectory: false)
+        return HubRuntimeConfiguration.importOrigins.map { origin in
+            HubRuntimeConfiguration.shareURL(for: input, origin: origin)
+        }
     }
 
-    static func download(from remoteURL: URL) async throws -> URL {
+    static func download(from remoteURLs: [URL]) async throws -> URL {
+        var lastError: Error = RemoteWebPageImportError.invalidInput
+        for remoteURL in remoteURLs {
+            do {
+                return try await download(from: remoteURL)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+
+    private static func download(from remoteURL: URL) async throws -> URL {
         let downloadedURL: URL
         let response: URLResponse
         do {
@@ -113,6 +128,429 @@ private enum RemoteWebPageImportDownloader {
         }
 
         return fileName
+    }
+}
+
+enum HubUserIdentityError: LocalizedError {
+    case iCloudNotSignedIn
+    case iCloudRestricted
+    case iCloudStatusUnknown
+    case iCloudTemporarilyUnavailable
+    case iCloudPermissionDenied
+    case iCloudNetworkUnavailable
+    case cloudKitContainerUnavailable
+    case cloudKitRequestFailed(String)
+    case invalidRecordName
+
+    var errorDescription: String? {
+        switch self {
+        case .iCloudNotSignedIn:
+            return AppStrings.localized("需要登录 iCloud 后才能使用 Hub。")
+        case .iCloudRestricted:
+            return AppStrings.localized("当前 iCloud 账户受限制，无法使用 Hub。")
+        case .iCloudStatusUnknown:
+            return AppStrings.localized("无法确认 iCloud 登录状态，请稍后重试。")
+        case .iCloudTemporarilyUnavailable:
+            return AppStrings.localized("iCloud 暂时不可用，请稍后重试。")
+        case .iCloudPermissionDenied:
+            return AppStrings.localized("无法访问 Hub 需要的 iCloud 权限，请检查系统设置。")
+        case .iCloudNetworkUnavailable:
+            return AppStrings.localized("网络连接不可用，暂时无法连接 iCloud。")
+        case .cloudKitContainerUnavailable:
+            return AppStrings.localized("当前安装包无法访问 Hub 使用的 iCloud 容器。")
+        case .cloudKitRequestFailed(let message):
+            return String(format: AppStrings.localized("无法初始化 Hub 身份：%@"), message)
+        case .invalidRecordName:
+            return AppStrings.localized("无法识别当前 iCloud 用户。")
+        }
+    }
+}
+
+enum HubUserIdentityProvider {
+    static func currentCloudKitUserRecordName() async throws -> String {
+        let container = CKContainer(identifier: AppRuntimeConfiguration.iCloudContainerIdentifier)
+        try await validateAccountStatus(container: container)
+
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+            container.fetchUserRecordID { recordID, error in
+                if let error {
+                    continuation.resume(throwing: identityError(from: error))
+                    appDiagnosticsLog(
+                        category: "HubIdentity",
+                        message: "fetch_user_record_failed \(diagnosticDescription(for: error))",
+                        level: .error
+                    )
+                    return
+                }
+
+                guard let recordName = recordID?.recordName.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !recordName.isEmpty else {
+                    continuation.resume(throwing: HubUserIdentityError.invalidRecordName)
+                    return
+                }
+
+                continuation.resume(returning: recordName)
+            }
+        }
+    }
+
+    private static func validateAccountStatus(container: CKContainer) async throws {
+        let status = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CKAccountStatus, Error>) in
+            container.accountStatus { status, error in
+                if let error {
+                    continuation.resume(throwing: identityError(from: error))
+                } else {
+                    continuation.resume(returning: status)
+                }
+            }
+        }
+
+        switch status {
+        case .available:
+            return
+        case .noAccount:
+            throw HubUserIdentityError.iCloudNotSignedIn
+        case .restricted:
+            throw HubUserIdentityError.iCloudRestricted
+        case .couldNotDetermine:
+            throw HubUserIdentityError.iCloudStatusUnknown
+        case .temporarilyUnavailable:
+            throw HubUserIdentityError.iCloudTemporarilyUnavailable
+        @unknown default:
+            throw HubUserIdentityError.iCloudStatusUnknown
+        }
+    }
+
+    private static func identityError(from error: Error) -> HubUserIdentityError {
+        guard let ckError = error as? CKError else {
+            return .cloudKitRequestFailed(error.localizedDescription)
+        }
+
+        switch ckError.code {
+        case .notAuthenticated:
+            return .iCloudNotSignedIn
+        case .networkUnavailable, .networkFailure:
+            return .iCloudNetworkUnavailable
+        case .serviceUnavailable, .requestRateLimited, .zoneBusy:
+            return .iCloudTemporarilyUnavailable
+        case .permissionFailure:
+            return .iCloudPermissionDenied
+        case .badContainer:
+            return .cloudKitContainerUnavailable
+        default:
+            return .cloudKitRequestFailed(ckError.localizedDescription)
+        }
+    }
+
+    private static func diagnosticDescription(for error: Error) -> String {
+        guard let ckError = error as? CKError else {
+            return "error=\(error.localizedDescription)"
+        }
+        return "ck_code=\(ckError.code.rawValue) error=\(ckError.localizedDescription)"
+    }
+}
+
+struct HubShareListItem: Decodable, Identifiable, Equatable, Sendable {
+    let code: String
+    let url: URL
+    let fileName: String
+    let displayName: String?
+    let contentType: String?
+    let byteSize: Int64
+    let createdAt: String
+    let retentionPolicy: String?
+    let expiresAt: String?
+    let downloadCount: Int
+
+    var id: String { code }
+
+    var displayTitle: String {
+        let title = displayName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? fileName : title
+    }
+
+    var retentionDisplayTitle: String {
+        HubShareRetentionPolicy(rawValue: retentionPolicy ?? "30d")?.displayTitle ?? AppStrings.localized("30 天")
+    }
+
+    var expiryDisplayText: String {
+        guard let expiresAt,
+              let date = ISO8601DateFormatter.htmlKeepHubDate(from: expiresAt) else {
+            return AppStrings.localized("永久保存")
+        }
+        return DateFormatter.localizedString(from: date, dateStyle: .medium, timeStyle: .none)
+    }
+
+    var remainingTimeDisplayText: String {
+        guard let expiresAt,
+              let expiryDate = ISO8601DateFormatter.htmlKeepHubDate(from: expiresAt) else {
+            return AppStrings.localized("永久保存")
+        }
+        let remaining = expiryDate.timeIntervalSinceNow
+        guard remaining > 0 else {
+            return AppStrings.localized("已过期")
+        }
+        if remaining < 60 * 60 {
+            return AppStrings.localized("不足 1 小时")
+        }
+
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = remaining >= 24 * 60 * 60 ? [.day, .hour] : [.hour, .minute]
+        formatter.maximumUnitCount = 2
+        formatter.unitsStyle = .abbreviated
+        return formatter.string(from: remaining) ?? expiryDisplayText
+    }
+
+    var byteSizeDisplayText: String {
+        ByteCountFormatter.string(fromByteCount: byteSize, countStyle: .file)
+    }
+}
+
+private struct HubSharesResponse: Decodable {
+    let shares: [HubShareListItem]
+}
+
+private struct HubServerError: Decodable {
+    let message: String?
+}
+
+enum HubAPIError: LocalizedError {
+    case invalidResponse
+    case server(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return AppStrings.localized("Hub 返回了无法识别的响应。")
+        case .server(let message):
+            return message
+        }
+    }
+}
+
+enum HubAPIClient {
+    static func fetchMyShares(cloudKitUserRecordName: String) async throws -> [HubShareListItem] {
+        var components = URLComponents(url: HubRuntimeConfiguration.mySharesURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "cloudKitUserRecordName", value: cloudKitUserRecordName)
+        ]
+        guard let url = components.url else {
+            throw HubAPIError.invalidResponse
+        }
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw HubAPIError.invalidResponse
+        }
+
+        let decoder = JSONDecoder()
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let serverError = try? decoder.decode(HubServerError.self, from: data)
+            throw HubAPIError.server(serverError?.message ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode))
+        }
+
+        do {
+            return try decoder.decode(HubSharesResponse.self, from: data).shares
+        } catch {
+            throw HubAPIError.invalidResponse
+        }
+    }
+
+    static func approveLogin(
+        token: String,
+        approveURL: URL = HubRuntimeConfiguration.approveLoginURL,
+        cloudKitUserRecordName: String,
+        clientIsPremium: Bool
+    ) async throws {
+        var request = URLRequest(url: approveURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = try JSONSerialization.data(
+            withJSONObject: [
+                "token": token,
+                "cloudKitUserRecordName": cloudKitUserRecordName,
+                "clientIsPremium": clientIsPremium
+            ],
+            options: []
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw HubAPIError.invalidResponse
+        }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let serverError = try? JSONDecoder().decode(HubServerError.self, from: data)
+            throw HubAPIError.server(serverError?.message ?? HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode))
+        }
+    }
+}
+
+struct HubLoginChallenge: Equatable {
+    let token: String
+    let approveURL: URL
+}
+
+enum HubLoginTokenParser {
+    static func challenge(from rawValue: String) -> HubLoginChallenge? {
+        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { return nil }
+
+        if value.hasPrefix("htmlkeep-hub-login:") {
+            let token = String(value.dropFirst("htmlkeep-hub-login:".count))
+            guard isValidToken(token) else { return nil }
+            return HubLoginChallenge(
+                token: token,
+                approveURL: HubRuntimeConfiguration.approveLoginURL
+            )
+        }
+
+        if let url = URL(string: value),
+           let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let token = components.queryItems?.first(where: { $0.name == "token" })?.value,
+           isValidToken(token),
+           let origin = HubRuntimeConfiguration.loginApprovalOrigin(for: url) {
+            return HubLoginChallenge(
+                token: token,
+                approveURL: HubRuntimeConfiguration.approveLoginURL(for: origin)
+            )
+        }
+
+        guard isValidToken(value) else { return nil }
+        return HubLoginChallenge(
+            token: value,
+            approveURL: HubRuntimeConfiguration.approveLoginURL
+        )
+    }
+
+    private static func isValidToken(_ value: String) -> Bool {
+        value.range(of: #"^[a-fA-F0-9]{24,96}$"#, options: .regularExpression) != nil
+    }
+}
+
+struct HubQRCodeScannerView: UIViewControllerRepresentable {
+    let onCode: (String) -> Void
+    let onError: (String) -> Void
+
+    func makeUIViewController(context: Context) -> HubQRCodeScannerViewController {
+        HubQRCodeScannerViewController(onCode: onCode, onError: onError)
+    }
+
+    func updateUIViewController(_ uiViewController: HubQRCodeScannerViewController, context: Context) {}
+}
+
+final class HubQRCodeScannerViewController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+    private let captureSession = AVCaptureSession()
+    private let onCode: (String) -> Void
+    private let onError: (String) -> Void
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var isConfigured = false
+    private var hasEmittedCode = false
+
+    init(onCode: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
+        self.onCode = onCode
+        self.onError = onError
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        previewLayer?.frame = view.bounds
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        configureAndStartIfNeeded()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        captureSession.stopRunning()
+    }
+
+    private func configureAndStartIfNeeded() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            configureSessionIfNeeded()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] isGranted in
+                DispatchQueue.main.async {
+                    if isGranted {
+                        self?.configureSessionIfNeeded()
+                    } else {
+                        self?.onError(AppStrings.localized("需要允许相机权限才能扫码登录。"))
+                    }
+                }
+            }
+        case .denied, .restricted:
+            onError(AppStrings.localized("需要允许相机权限才能扫码登录。"))
+        @unknown default:
+            onError(AppStrings.localized("无法启动扫码。"))
+        }
+    }
+
+    private func configureSessionIfNeeded() {
+        guard !isConfigured else {
+            startSession()
+            return
+        }
+
+        guard let device = AVCaptureDevice.default(for: .video),
+              let input = try? AVCaptureDeviceInput(device: device),
+              captureSession.canAddInput(input) else {
+            onError(AppStrings.localized("无法启动相机。"))
+            return
+        }
+        captureSession.addInput(input)
+
+        let output = AVCaptureMetadataOutput()
+        guard captureSession.canAddOutput(output) else {
+            onError(AppStrings.localized("无法启动扫码。"))
+            return
+        }
+        captureSession.addOutput(output)
+        output.setMetadataObjectsDelegate(self, queue: .main)
+        output.metadataObjectTypes = [.qr]
+
+        let layer = AVCaptureVideoPreviewLayer(session: captureSession)
+        layer.videoGravity = .resizeAspectFill
+        layer.frame = view.bounds
+        view.layer.insertSublayer(layer, at: 0)
+        previewLayer = layer
+        isConfigured = true
+        startSession()
+    }
+
+    private func startSession() {
+        guard !captureSession.isRunning else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [captureSession] in
+            captureSession.startRunning()
+        }
+    }
+
+    func metadataOutput(
+        _ output: AVCaptureMetadataOutput,
+        didOutput metadataObjects: [AVMetadataObject],
+        from connection: AVCaptureConnection
+    ) {
+        guard !hasEmittedCode,
+              let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+              let value = object.stringValue else {
+            return
+        }
+        hasEmittedCode = true
+        captureSession.stopRunning()
+        onCode(value)
     }
 }
 
@@ -580,6 +1018,9 @@ struct AppRootView: View {
                             },
                             onActivityChanged: {
                                 scheduleActivitySync()
+                            },
+                            onOpenProEntitlement: {
+                                presentProEntitlement()
                             }
                         )
                     } else {
@@ -597,6 +1038,9 @@ struct AppRootView: View {
                             onDeletePage: {
                                 deletePage(page)
                                 router.popToRoot()
+                            },
+                            onOpenProEntitlement: {
+                                presentProEntitlement()
                             }
                         )
                     } else {
@@ -660,7 +1104,10 @@ struct AppRootView: View {
                                 permanentlyDelete(deletedPage)
                                 router.openRecentlyDeleted()
                             },
-                            onRuntimeStorageChanged: {}
+                            onRuntimeStorageChanged: {},
+                            onOpenProEntitlement: {
+                                presentProEntitlement()
+                            }
                         )
                     } else {
                         MissingPageView()
@@ -684,6 +1131,9 @@ struct AppRootView: View {
                             onPermanentlyDeletePage: {
                                 permanentlyDelete(deletedPage)
                                 router.openRecentlyDeleted()
+                            },
+                            onOpenProEntitlement: {
+                                presentProEntitlement()
                             }
                         )
                     } else {
@@ -742,6 +1192,9 @@ struct AppRootView: View {
                 Task {
                     await performICloudSyncIfAllowed(reason: AppStrings.localized("手动同步 iCloud"))
                 }
+            },
+            onOpenHubShares: {
+                presentHubSharesFromSettings()
             },
             onOpenRecentlyDeleted: {
                 presentRecentlyDeletedFromSettings()
@@ -805,6 +1258,13 @@ struct AppRootView: View {
                 }
             )
             .environment(library)
+        case .hubShares:
+            SettingsHubSharesSheet(
+                canUseExtendedRetention: proEntitlementStore.hasProEntitlement,
+                onOpenProEntitlement: {
+                    presentProEntitlement(from: host, replacingCurrentSheet: true)
+                }
+            )
         case .projectWidgetGuide:
             SettingsProjectWidgetGuideSheet()
         case .iCloudSyncProEntitlementGuide:
@@ -1057,18 +1517,22 @@ struct AppRootView: View {
     private func startURLImportFlow(from rawInput: String) {
         releaseInitialRouteGate()
 
-        let remoteURL: URL
+        let remoteURLs: [URL]
         do {
-            remoteURL = try RemoteWebPageImportDownloader.hubCodeURL(from: rawInput)
+            remoteURLs = try RemoteWebPageImportDownloader.hubCodeURLs(from: rawInput)
         } catch {
             importError = error.localizedDescription
+            return
+        }
+        guard let displayURL = remoteURLs.first else {
+            importError = RemoteWebPageImportError.invalidInput.localizedDescription
             return
         }
 
         let previewID = UUID()
         let preview = WebPageImportPreview(
             id: previewID,
-            sourceFileName: remoteURL.absoluteString,
+            sourceFileName: displayURL.absoluteString,
             source: .url,
             phase: .importing
         )
@@ -1082,13 +1546,13 @@ struct AppRootView: View {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 60_000_000)
             guard importPreview?.id == previewID else { return }
-            await downloadAndImport(remoteURL, previewID: previewID)
+            await downloadAndImport(remoteURLs, previewID: previewID)
         }
     }
 
-    private func downloadAndImport(_ remoteURL: URL, previewID: UUID) async {
+    private func downloadAndImport(_ remoteURLs: [URL], previewID: UUID) async {
         do {
-            let localURL = try await RemoteWebPageImportDownloader.download(from: remoteURL)
+            let localURL = try await RemoteWebPageImportDownloader.download(from: remoteURLs)
             defer {
                 try? FileManager.default.removeItem(at: localURL.deletingLastPathComponent())
             }
@@ -1161,6 +1625,10 @@ struct AppRootView: View {
 
     private func presentRecentlyDeletedFromSettings() {
         settingsPresentedSheet = .recentlyDeleted
+    }
+
+    private func presentHubSharesFromSettings() {
+        settingsPresentedSheet = .hubShares
     }
 
     private func presentProjectWidgetGuideFromSettings() {
@@ -1866,6 +2334,7 @@ private enum SettingsSheetHost {
 
 private enum SettingsPresentedSheet: Identifiable, Equatable {
     case recentlyDeleted
+    case hubShares
     case projectWidgetGuide
     case iCloudSyncProEntitlementGuide
     case agentImport
@@ -1876,6 +2345,8 @@ private enum SettingsPresentedSheet: Identifiable, Equatable {
         switch self {
         case .recentlyDeleted:
             return "recentlyDeleted"
+        case .hubShares:
+            return "hubShares"
         case .projectWidgetGuide:
             return "projectWidgetGuide"
         case .iCloudSyncProEntitlementGuide:
@@ -2178,6 +2649,7 @@ private struct SettingsSidebar: View {
     let onICloudSyncEnabled: () -> Void
     let onICloudSyncDisabled: () -> Void
     let onICloudSyncNow: () -> Void
+    let onOpenHubShares: () -> Void
     let onOpenRecentlyDeleted: () -> Void
     let onOpenProjectWidgetGuide: () -> Void
     let onOpenICloudSyncProEntitlementGuide: () -> Void
@@ -2193,6 +2665,9 @@ private struct SettingsSidebar: View {
                 onICloudSyncEnabled: onICloudSyncEnabled,
                 onICloudSyncDisabled: onICloudSyncDisabled,
                 onICloudSyncNow: onICloudSyncNow,
+                onOpenHubShares: {
+                    onOpenHubShares()
+                },
                 onOpenRecentlyDeleted: {
                     onOpenRecentlyDeleted()
                 },

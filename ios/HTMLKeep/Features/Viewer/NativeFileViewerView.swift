@@ -9,11 +9,14 @@ struct NativeFileViewerView: View {
     let folderURL: URL
     let files: [WebPageProjectFile]
     var deletedPage: DeletedWebPage? = nil
+    var hubSharePreviewCode: String? = nil
     let onRenameProject: (WebPage, String) -> Void
     let onDeletePage: () -> Void
     var onRestoreDeletedPage: (() -> Bool)? = nil
     var onPermanentlyDeletePage: (() -> Void)? = nil
+    var onOpenProEntitlement: () -> Void = {}
 
+    @EnvironmentObject private var proEntitlementStore: ProEntitlementStore
     @State private var previewPage: NativeFilePreviewItem?
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
@@ -26,6 +29,7 @@ struct NativeFileViewerView: View {
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
     @State private var shareErrorMessage: String?
+    @State private var isHubSharePreviewCodeCopied = false
 
     var body: some View {
         ZStack {
@@ -51,7 +55,7 @@ struct NativeFileViewerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if !isRecentlyDeletedViewer {
+                if !isReadOnlyPreview {
                     Menu {
                         nativeFileViewerActionsMenuContent
                     } label: {
@@ -70,6 +74,8 @@ struct NativeFileViewerView: View {
                 projectTitle: page.title,
                 projectFolderURL: folderURL,
                 cachedShare: hubShareCache,
+                canUseExtendedRetention: proEntitlementStore.hasProEntitlement,
+                onOpenProEntitlement: onOpenProEntitlement,
                 onCacheChanged: { hubShareCache = $0 }
             ) {
                 let projectFolderURL = folderURL
@@ -123,10 +129,17 @@ struct NativeFileViewerView: View {
             Text(shareErrorMessage ?? "")
         }
         .task(id: page.id) {
-            await refreshHubShareCache()
+            if !isReadOnlyPreview {
+                await refreshHubShareCache()
+            }
+        }
+        .onChange(of: hubSharePreviewCode) { _, _ in
+            isHubSharePreviewCodeCopied = false
         }
         .safeAreaInset(edge: .bottom) {
-            if isRecentlyDeletedViewer {
+            if isHubSharePreview {
+                hubSharePreviewActionDock
+            } else if isRecentlyDeletedViewer {
                 recentlyDeletedActionDock
             }
         }
@@ -182,13 +195,15 @@ struct NativeFileViewerView: View {
             Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
         }
 
-        Button {
-            startGeneratingHubCodeFromActionsMenu()
-        } label: {
-            Label(
-                AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
-                systemImage: "key.fill"
-            )
+        if AppDistribution.current.supportsHubShareAuthoring {
+            Button {
+                startGeneratingHubCodeFromActionsMenu()
+            } label: {
+                Label(
+                    AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
+                    systemImage: "key.fill"
+                )
+            }
         }
 
         Button {
@@ -231,6 +246,28 @@ struct NativeFileViewerView: View {
 
     private var isRecentlyDeletedViewer: Bool {
         deletedPage != nil
+    }
+
+    private var isHubSharePreview: Bool {
+        hubSharePreviewCode != nil
+    }
+
+    private var isReadOnlyPreview: Bool {
+        isRecentlyDeletedViewer || isHubSharePreview
+    }
+
+    private var hubSharePreviewActionDock: some View {
+        BottomActionDock {
+            AppActionButton(
+                isHubSharePreviewCodeCopied ? AppStrings.localized("已复制") : AppStrings.localized("复制暗号"),
+                systemImage: isHubSharePreviewCodeCopied ? "checkmark" : "doc.on.doc",
+                scene: .sky
+            ) {
+                guard let hubSharePreviewCode else { return }
+                UIPasteboard.general.string = hubSharePreviewCode
+                isHubSharePreviewCodeCopied = true
+            }
+        }
     }
 
     private var directPreviewFile: WebPageProjectFile? {
