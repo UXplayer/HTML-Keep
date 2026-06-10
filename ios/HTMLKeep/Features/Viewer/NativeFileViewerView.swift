@@ -3,6 +3,7 @@ import ImageIO
 import MarkdownUI
 import QuickLook
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct NativeFileViewerView: View {
@@ -632,10 +633,8 @@ private struct NativeImageThumbnailGridItem: View {
     @State private var thumbnail: UIImage?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .center, spacing: 7) {
             ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.black.opacity(0.08))
                 if let thumbnail {
                     Image(uiImage: thumbnail)
                         .resizable()
@@ -659,8 +658,8 @@ private struct NativeImageThumbnailGridItem: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(AppTheme.textSecondary)
                 .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .task(id: url) {
             thumbnail = await NativeImageThumbnailLoader.thumbnail(for: url, maxPixelSize: 360)
@@ -752,17 +751,14 @@ private struct NativeImageReaderView: View {
             Color.black
                 .ignoresSafeArea()
 
-            TabView(selection: $selectedIndex) {
-                ForEach(Array(sequence.images.enumerated()), id: \.element.id) { index, image in
-                    NativeImageReaderPage(url: image.url) {
-                        withAnimation(.easeInOut(duration: 0.18)) {
-                            isChromeVisible.toggle()
-                        }
-                    }
-                    .tag(index)
+            VerticalNativeImagePager(
+                images: sequence.images,
+                selectedIndex: $selectedIndex
+            ) {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    isChromeVisible.toggle()
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
 
             if isChromeVisible {
@@ -823,6 +819,111 @@ private struct NativeImageReaderView: View {
             selectedIndex + 1,
             sequence.images.count
         )
+    }
+}
+
+private struct VerticalNativeImagePager: UIViewControllerRepresentable {
+    let images: [NativeImageSequenceItem]
+    @Binding var selectedIndex: Int
+    let onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeUIViewController(context: Context) -> UIPageViewController {
+        let controller = UIPageViewController(
+            transitionStyle: .scroll,
+            navigationOrientation: .vertical
+        )
+        controller.dataSource = context.coordinator
+        controller.delegate = context.coordinator
+        if let initialController = context.coordinator.controller(for: selectedIndex) {
+            controller.setViewControllers([initialController], direction: .forward, animated: false)
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ pageViewController: UIPageViewController, context: Context) {
+        context.coordinator.parent = self
+        guard let targetController = context.coordinator.controller(for: selectedIndex) else {
+            pageViewController.setViewControllers([], direction: .forward, animated: false)
+            return
+        }
+
+        let currentIndex = context.coordinator.currentIndex(in: pageViewController)
+        guard currentIndex != selectedIndex else { return }
+        let direction: UIPageViewController.NavigationDirection = selectedIndex > currentIndex ? .forward : .reverse
+        pageViewController.setViewControllers([targetController], direction: direction, animated: true)
+    }
+
+    final class Coordinator: NSObject, UIPageViewControllerDataSource, UIPageViewControllerDelegate {
+        var parent: VerticalNativeImagePager
+        private var controllers: [Int: NativeImageReaderHostingController] = [:]
+
+        init(parent: VerticalNativeImagePager) {
+            self.parent = parent
+        }
+
+        func controller(for index: Int) -> NativeImageReaderHostingController? {
+            guard parent.images.indices.contains(index) else { return nil }
+            let page = NativeImageReaderPage(url: parent.images[index].url, onTap: parent.onTap)
+            if let controller = controllers[index] {
+                controller.rootView = page
+                return controller
+            }
+            let controller = NativeImageReaderHostingController(index: index, rootView: page)
+            controller.view.backgroundColor = .black
+            controllers[index] = controller
+            return controller
+        }
+
+        func currentIndex(in pageViewController: UIPageViewController) -> Int {
+            guard let controller = pageViewController.viewControllers?.first as? NativeImageReaderHostingController else {
+                return parent.selectedIndex
+            }
+            return controller.index
+        }
+
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            viewControllerBefore viewController: UIViewController
+        ) -> UIViewController? {
+            guard let controller = viewController as? NativeImageReaderHostingController else { return nil }
+            return self.controller(for: controller.index - 1)
+        }
+
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            viewControllerAfter viewController: UIViewController
+        ) -> UIViewController? {
+            guard let controller = viewController as? NativeImageReaderHostingController else { return nil }
+            return self.controller(for: controller.index + 1)
+        }
+
+        func pageViewController(
+            _ pageViewController: UIPageViewController,
+            didFinishAnimating finished: Bool,
+            previousViewControllers: [UIViewController],
+            transitionCompleted completed: Bool
+        ) {
+            guard completed else { return }
+            parent.selectedIndex = currentIndex(in: pageViewController)
+        }
+    }
+}
+
+private final class NativeImageReaderHostingController: UIHostingController<NativeImageReaderPage> {
+    let index: Int
+
+    init(index: Int, rootView: NativeImageReaderPage) {
+        self.index = index
+        super.init(rootView: rootView)
+    }
+
+    @available(*, unavailable)
+    @MainActor dynamic required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }
 
