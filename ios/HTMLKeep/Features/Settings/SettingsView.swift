@@ -1449,14 +1449,15 @@ struct SettingsHubSharesView: View {
 
     private func sharesList(_ shares: [HubShareListItem]) -> some View {
         List {
-            Section {
-                ForEach(shares) { share in
+            ForEach(shares) { share in
+                Section {
                     shareRow(share, route: previewRoute(for: share))
                 }
+                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.insetGrouped)
-        .listSectionSpacing(.compact)
+        .listSectionSpacing(10)
         .scrollContentBackground(.hidden)
         .refreshable {
             await loadShares()

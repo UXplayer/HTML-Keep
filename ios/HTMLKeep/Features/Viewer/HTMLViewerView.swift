@@ -1247,7 +1247,7 @@ struct HubShareCodeSheet: View {
                 let isExtended = policy != .thirtyDays
                 HubShareRetentionOptionButton(
                     title: policy.displayTitle,
-                    badge: isExtended ? AppStrings.localized("Pro") : nil,
+                    showsLockBadge: isExtended,
                     isSelected: selectedRetentionPolicy == policy,
                     isLocked: isExtended && !canUseExtendedRetention
                 ) {
@@ -1472,7 +1472,7 @@ private struct HubShareCodeInfoRow: View {
 
 private struct HubShareRetentionOptionButton: View {
     let title: String
-    let badge: String?
+    let showsLockBadge: Bool
     let isSelected: Bool
     let isLocked: Bool
     let action: () -> Void
@@ -1480,11 +1480,7 @@ private struct HubShareRetentionOptionButton: View {
     var body: some View {
         Button(action: action) {
             ZStack(alignment: .topTrailing) {
-                HStack(spacing: 5) {
-                    if isLocked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 11, weight: .bold))
-                    }
+                HStack {
                     Text(title)
                         .font(.system(size: 15, weight: .bold))
                 }
@@ -1500,15 +1496,14 @@ private struct HubShareRetentionOptionButton: View {
                         .stroke(isSelected ? Color.clear : AppTheme.surfaceBorder, lineWidth: 1)
                 }
 
-                if let badge {
-                    Text(badge)
+                if showsLockBadge {
+                    Image(systemName: "lock.fill")
                         .font(.system(size: 9, weight: .black))
                         .foregroundStyle(isSelected ? AppTheme.deepWater : .white)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
+                        .frame(width: 18, height: 18)
                         .background(
                             isSelected ? Color.white : AppTheme.deepWater,
-                            in: Capsule()
+                            in: Circle()
                         )
                         .offset(x: 5, y: -7)
                 }
