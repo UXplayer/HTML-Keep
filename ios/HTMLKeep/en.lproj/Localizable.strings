@@ -161,6 +161,7 @@
 "重置" = "Reset";
 "这个压缩包里没有可预览的文件。" = "This archive does not contain previewable files.";
 "图片" = "Image";
+"imageReader.pageCountFormat" = "%d / %d";
 "视频" = "Video";
 "音频" = "Audio";
 "文档" = "Document";

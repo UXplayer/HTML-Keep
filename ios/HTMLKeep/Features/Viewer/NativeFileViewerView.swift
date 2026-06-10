@@ -1,4 +1,5 @@
 import AVKit
+import ImageIO
 import MarkdownUI
 import QuickLook
 import SwiftUI
@@ -38,11 +39,14 @@ struct NativeFileViewerView: View {
             if let directPreviewFile {
                 NativeFilePreviewPageView(
                     url: folderURL.appendingPathComponent(directPreviewFile.relativePath, isDirectory: false),
-                    projectRootURL: folderURL
+                    projectRootURL: folderURL,
+                    imageSequence: imageSequence(startingAt: directPreviewFile)
                 )
             } else if files.isEmpty {
                 emptyState
                     .padding(20)
+            } else if showsImageGrid {
+                imageGrid
             } else {
                 fileList
             }
@@ -90,7 +94,11 @@ struct NativeFileViewerView: View {
         }
         .navigationDestination(isPresented: previewPageBinding) {
             if let previewPage {
-                NativeFilePreviewPageView(url: previewPage.url, projectRootURL: folderURL)
+                NativeFilePreviewPageView(
+                    url: previewPage.url,
+                    projectRootURL: folderURL,
+                    imageSequence: previewPage.imageSequence
+                )
             }
         }
         .alert(AppStrings.localized("重命名项目"), isPresented: $isRenameAlertPresented) {
@@ -176,6 +184,31 @@ struct NativeFileViewerView: View {
         .listSectionSpacing(.compact)
         .contentMargins(.top, 14, for: .scrollContent)
         .scrollContentBackground(.hidden)
+    }
+
+    private var imageGrid: some View {
+        ScrollView {
+            LazyVGrid(
+                columns: [
+                    GridItem(.adaptive(minimum: 104, maximum: 160), spacing: 12)
+                ],
+                spacing: 14
+            ) {
+                ForEach(imageFiles) { file in
+                    Button {
+                        open(file)
+                    } label: {
+                        NativeImageThumbnailGridItem(
+                            file: file,
+                            url: folderURL.appendingPathComponent(file.relativePath, isDirectory: false)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 18)
+        }
     }
 
     private var emptyState: some View {
@@ -283,6 +316,17 @@ struct NativeFileViewerView: View {
         return file
     }
 
+    private var imageFiles: [WebPageProjectFile] {
+        files.filter { NativeFileKind.kind(for: $0) == .image }
+            .sorted {
+                $0.relativePath.localizedStandardCompare($1.relativePath) == .orderedAscending
+            }
+    }
+
+    private var showsImageGrid: Bool {
+        !files.isEmpty && imageFiles.count == files.count
+    }
+
     private var normalizedDraftProjectTitle: String {
         draftProjectTitle
             .components(separatedBy: .whitespacesAndNewlines)
@@ -337,7 +381,22 @@ struct NativeFileViewerView: View {
 
     private func open(_ file: WebPageProjectFile) {
         let url = folderURL.appendingPathComponent(file.relativePath, isDirectory: false)
-        previewPage = NativeFilePreviewItem(url: url)
+        previewPage = NativeFilePreviewItem(
+            url: url,
+            imageSequence: imageSequence(startingAt: file)
+        )
+    }
+
+    private func imageSequence(startingAt file: WebPageProjectFile) -> NativeImageSequence? {
+        guard NativeFileKind.kind(for: file) == .image else { return nil }
+        let images = imageFiles.map { imageFile in
+            NativeImageSequenceItem(
+                relativePath: imageFile.relativePath,
+                url: folderURL.appendingPathComponent(imageFile.relativePath, isDirectory: false)
+            )
+        }
+        guard images.count > 1 else { return nil }
+        return NativeImageSequence(images: images, selectedRelativePath: file.relativePath)
     }
 
     private func subtitle(for file: WebPageProjectFile) -> String {
@@ -457,6 +516,29 @@ private struct NativeFileDirectoryGroup: Identifiable {
 private struct NativeFilePreviewItem: Identifiable {
     let id = UUID()
     let url: URL
+    var imageSequence: NativeImageSequence?
+}
+
+private struct NativeImageSequence: Hashable {
+    let images: [NativeImageSequenceItem]
+    let selectedRelativePath: String
+
+    var selectedIndex: Int {
+        images.firstIndex { $0.relativePath == selectedRelativePath } ?? 0
+    }
+}
+
+private struct NativeImageSequenceItem: Identifiable, Hashable {
+    let relativePath: String
+    let url: URL
+
+    var id: String {
+        relativePath
+    }
+
+    var fileName: String {
+        URL(fileURLWithPath: relativePath).lastPathComponent
+    }
 }
 
 private enum NativeFileKind {
@@ -544,9 +626,80 @@ private struct NativeFileKindIcon: View {
     }
 }
 
+private struct NativeImageThumbnailGridItem: View {
+    let file: WebPageProjectFile
+    let url: URL
+    @State private var thumbnail: UIImage?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.08))
+                if let thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                } else {
+                    Image(systemName: "photo")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(AppTheme.textSecondary.opacity(0.72))
+                }
+            }
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+            }
+
+            Text(file.fileName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .task(id: url) {
+            thumbnail = await NativeImageThumbnailLoader.thumbnail(for: url, maxPixelSize: 360)
+        }
+    }
+}
+
+private enum NativeImageThumbnailLoader {
+    static func thumbnail(for url: URL, maxPixelSize: CGFloat) async -> UIImage? {
+        await Task.detached(priority: .utility) {
+            let options: [CFString: Any] = [
+                kCGImageSourceShouldCache: false
+            ]
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, options as CFDictionary) else {
+                return nil
+            }
+
+            let thumbnailOptions: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: Int(maxPixelSize)
+            ]
+            guard let cgImage = CGImageSourceCreateThumbnailAtIndex(
+                source,
+                0,
+                thumbnailOptions as CFDictionary
+            ) else {
+                return nil
+            }
+            return UIImage(cgImage: cgImage)
+        }.value
+    }
+}
+
 private struct NativeFilePreviewPageView: View {
     let url: URL
     let projectRootURL: URL
+    var imageSequence: NativeImageSequence? = nil
 
     var body: some View {
         previewContent
@@ -558,7 +711,9 @@ private struct NativeFilePreviewPageView: View {
     private var previewContent: some View {
         switch NativeFileKind.kind(for: url) {
         case .image:
-            if UIImage(contentsOfFile: url.path) != nil {
+            if let imageSequence {
+                NativeImageReaderView(sequence: imageSequence)
+            } else if UIImage(contentsOfFile: url.path) != nil {
                 NativeImagePreview(url: url)
             } else {
                 NativeSystemFilePreviewPage(url: url)
@@ -577,6 +732,129 @@ private struct NativeFilePreviewPageView: View {
             } else {
                 NativeSystemFilePreviewPage(url: url)
             }
+        }
+    }
+}
+
+private struct NativeImageReaderView: View {
+    let sequence: NativeImageSequence
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedIndex: Int
+    @State private var isChromeVisible = true
+
+    init(sequence: NativeImageSequence) {
+        self.sequence = sequence
+        _selectedIndex = State(initialValue: sequence.selectedIndex)
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.black
+                .ignoresSafeArea()
+
+            TabView(selection: $selectedIndex) {
+                ForEach(Array(sequence.images.enumerated()), id: \.element.id) { index, image in
+                    NativeImageReaderPage(url: image.url) {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            isChromeVisible.toggle()
+                        }
+                    }
+                    .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
+
+            if isChromeVisible {
+                chromeBar
+                    .transition(.opacity)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .statusBarHidden(!isChromeVisible)
+        .background(Color.black)
+    }
+
+    private var chromeBar: some View {
+        HStack(spacing: 12) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(.black.opacity(0.34), in: Circle())
+            }
+            .accessibilityLabel(AppStrings.localized("返回"))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(currentImage.fileName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Text(pageCountText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.72))
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .background {
+            LinearGradient(
+                colors: [.black.opacity(0.72), .black.opacity(0.42), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(edges: .top)
+        }
+    }
+
+    private var currentImage: NativeImageSequenceItem {
+        sequence.images[safe: selectedIndex] ?? sequence.images[0]
+    }
+
+    private var pageCountText: String {
+        String(
+            format: AppStrings.localized("imageReader.pageCountFormat"),
+            selectedIndex + 1,
+            sequence.images.count
+        )
+    }
+}
+
+private struct NativeImageReaderPage: View {
+    let url: URL
+    let onTap: () -> Void
+    @State private var image: UIImage?
+    @State private var didFail = false
+
+    var body: some View {
+        Group {
+            if let image {
+                ZoomableNativeImageView(image: image, onTap: onTap)
+            } else if didFail {
+                Text(AppStrings.localized("无法预览这个文件。"))
+                    .font(.system(size: 15))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.black)
+            } else {
+                ProgressView()
+                    .tint(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.black)
+            }
+        }
+        .task(id: url) {
+            didFail = false
+            image = await Task.detached(priority: .userInitiated) {
+                UIImage(contentsOfFile: url.path)
+            }.value
+            didFail = image == nil
         }
     }
 }
@@ -643,12 +921,14 @@ private struct NativeMediaPlayerView: UIViewControllerRepresentable {
 
 private struct ZoomableNativeImageView: UIViewRepresentable {
     let image: UIImage
+    var onTap: (() -> Void)? = nil
 
     func makeUIView(context _: Context) -> ZoomableImageScrollView {
         ZoomableImageScrollView()
     }
 
     func updateUIView(_ scrollView: ZoomableImageScrollView, context _: Context) {
+        scrollView.onSingleTap = onTap
         scrollView.setImage(image)
     }
 }
@@ -657,6 +937,7 @@ private final class ZoomableImageScrollView: UIScrollView, UIScrollViewDelegate 
     private let imageView = UIImageView()
     private var currentImage: UIImage?
     private var lastBoundsSize: CGSize = .zero
+    var onSingleTap: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -670,6 +951,14 @@ private final class ZoomableImageScrollView: UIScrollView, UIScrollViewDelegate 
         imageView.contentMode = .scaleAspectFit
         imageView.isUserInteractionEnabled = false
         addSubview(imageView)
+
+        let singleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap))
+        singleTapRecognizer.numberOfTapsRequired = 1
+        let doubleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
+        doubleTapRecognizer.numberOfTapsRequired = 2
+        singleTapRecognizer.require(toFail: doubleTapRecognizer)
+        addGestureRecognizer(singleTapRecognizer)
+        addGestureRecognizer(doubleTapRecognizer)
     }
 
     required init?(coder: NSCoder) {
@@ -703,6 +992,29 @@ private final class ZoomableImageScrollView: UIScrollView, UIScrollViewDelegate 
 
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
         centerImageIfNeeded()
+    }
+
+    @objc private func handleSingleTap() {
+        onSingleTap?()
+    }
+
+    @objc private func handleDoubleTap(_ recognizer: UITapGestureRecognizer) {
+        guard currentImage != nil else { return }
+        if zoomScale > minimumZoomScale * 1.08 {
+            setZoomScale(minimumZoomScale, animated: true)
+            return
+        }
+
+        let targetScale = min(max(minimumZoomScale * 2.2, 2), maximumZoomScale)
+        let tapPoint = recognizer.location(in: imageView)
+        let zoomSize = CGSize(width: bounds.width / targetScale, height: bounds.height / targetScale)
+        let zoomRect = CGRect(
+            x: tapPoint.x - zoomSize.width / 2,
+            y: tapPoint.y - zoomSize.height / 2,
+            width: zoomSize.width,
+            height: zoomSize.height
+        )
+        zoom(to: zoomRect, animated: true)
     }
 
     private func configureZoomScaleForCurrentBounds() {
@@ -1230,5 +1542,11 @@ private struct NativeSystemFilePreview: UIViewControllerRepresentable {
         ) -> QLPreviewItem {
             url as NSURL
         }
+    }
+}
+
+private extension Array {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
