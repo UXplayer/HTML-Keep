@@ -1174,6 +1174,25 @@ enum AppActionButtonScene: CaseIterable, Identifiable {
     case neutralLightWithBorder
     case neutralDark
 
+    private static let neutralSurfaceTopGlowStart = Color(
+        lightHex: 0xFFFFFF,
+        darkHex: 0x2B3545,
+        lightOpacity: 1,
+        darkOpacity: 0.88
+    )
+    private static let neutralSurfaceTopGlowEnd = Color(
+        lightHex: 0xFFFFFF,
+        darkHex: 0x1A212B,
+        lightOpacity: 0,
+        darkOpacity: 0
+    )
+    private static let neutralTopSideStroke = Color(
+        lightHex: 0xEBEDF9,
+        darkHex: 0x334052,
+        lightOpacity: 1,
+        darkOpacity: 0.72
+    )
+
     var id: String { title }
 
     var title: String {
@@ -1287,10 +1306,10 @@ enum AppActionButtonScene: CaseIterable, Identifiable {
             )
         case .neutralLight:
             return AppActionButtonPalette(
-                fill: .white,
-                label: AppTheme.ink,
-                topGlowStart: .white,
-                topGlowEnd: Color(rgbaHex: 0xFFFFFF00),
+                fill: AppTheme.surfaceStrong,
+                label: AppTheme.contentPrimary,
+                topGlowStart: Self.neutralSurfaceTopGlowStart,
+                topGlowEnd: Self.neutralSurfaceTopGlowEnd,
                 innerShadow: AppTheme.surfaceDock,
                 stroke: AppTheme.surfaceBorder,
                 topSideStroke: nil
@@ -1299,11 +1318,11 @@ enum AppActionButtonScene: CaseIterable, Identifiable {
             return AppActionButtonPalette(
                 fill: AppTheme.surfaceStrong,
                 label: AppTheme.contentPrimary,
-                topGlowStart: AppTheme.surfaceStrong,
-                topGlowEnd: Color(rgbaHex: 0xFFFFFF00),
+                topGlowStart: Self.neutralSurfaceTopGlowStart,
+                topGlowEnd: Self.neutralSurfaceTopGlowEnd,
                 innerShadow: AppTheme.surfaceDock,
                 stroke: nil,
-                topSideStroke: AppTheme.surfaceDock
+                topSideStroke: Self.neutralTopSideStroke
             )
         case .neutralDark:
             return AppActionButtonPalette(

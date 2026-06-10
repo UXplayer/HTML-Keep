@@ -1679,7 +1679,7 @@ private enum SettingsHomeLayoutPreviewStyle {
         startPoint: UnitPoint(x: 0.5, y: 0),
         endPoint: UnitPoint(x: 0.5, y: 1)
     )
-    static let selectedIndicatorMark = AppActionButtonScene.neutralLight.palette.fill
+    static let selectedIndicatorMark = Color.white
     static let iconPalette = [
         AppTheme.sky,
         AppTheme.leaf,
