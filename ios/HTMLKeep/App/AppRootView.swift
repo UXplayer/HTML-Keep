@@ -290,15 +290,18 @@ struct HubShareListItem: Decodable, Identifiable, Equatable, Sendable {
         guard remaining > 0 else {
             return AppStrings.localized("已过期")
         }
-        if remaining < 60 * 60 {
-            return AppStrings.localized("不足 1 小时")
-        }
 
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = remaining >= 24 * 60 * 60 ? [.day, .hour] : [.hour, .minute]
-        formatter.maximumUnitCount = 2
-        formatter.unitsStyle = .abbreviated
-        return formatter.string(from: remaining) ?? expiryDisplayText
+        let minute: TimeInterval = 60
+        let hour: TimeInterval = 60 * minute
+        let day: TimeInterval = 24 * hour
+
+        if remaining >= day {
+            return String(format: AppStrings.localized("%d天"), Int(remaining / day))
+        }
+        if remaining >= hour {
+            return String(format: AppStrings.localized("%d小时"), Int(remaining / hour))
+        }
+        return String(format: AppStrings.localized("%d分钟"), max(1, Int(ceil(remaining / minute))))
     }
 
     var byteSizeDisplayText: String {

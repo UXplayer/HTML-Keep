@@ -145,11 +145,14 @@
 "分享链接：%@" = "Share link: %@";
 "这个暗号默认保留 30 天，过期后会自动清理。" = "This code is kept for 30 days by default and will be cleaned up after it expires.";
 "这是我制作的《%@》" = "I made \"%@\"";
-"使用暗号 %@ 获取" = "Use code %@ to get it";
-"使用方法：打开 \"%@\" - 点击首页右下角“🔑暗号”按钮 - 输入暗号" = "How to use: open \"%@\" - tap the 🔑 Code button at the bottom right of Home - enter the code";
+"获取暗号 %@" = "Get code %@";
+"使用方法：打开 \"%@\" App- 点击首页右下角“🔑暗号”按钮 - 输入暗号" = "How to use: open the \"%@\" app - tap the 🔑 Code button at the bottom right of Home - enter the code";
 "永久保存" = "Kept permanently";
 "已过期" = "Expired";
 "不足 1 小时" = "Less than 1h";
+"%d天" = "%dd";
+"%d小时" = "%dh";
+"%d分钟" = "%dm";
 "Pro" = "Pro";
 "更多操作" = "More Actions";
 "缩放" = "Zoom";

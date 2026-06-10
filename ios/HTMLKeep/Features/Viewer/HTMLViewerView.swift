@@ -1296,7 +1296,7 @@ struct HubShareCodeSheet: View {
                 .foregroundStyle(AppTheme.deepWater)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 14)
-                .background(AppTheme.surfaceInset, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(AppTheme.surfaceBorder, lineWidth: 1)
@@ -1429,7 +1429,7 @@ private struct HubShareCodeTitleRow: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(isWarning ? AppTheme.coral : AppTheme.deepWater)
                 .frame(width: 42, height: 42)
-                .background(AppTheme.surfaceInset, in: Circle())
+                .background(Color.white, in: Circle())
                 .overlay {
                     Circle()
                         .stroke(AppTheme.surfaceBorder, lineWidth: 1)
@@ -1492,7 +1492,7 @@ private struct HubShareRetentionOptionButton: View {
                 .frame(maxWidth: .infinity, minHeight: 42)
                 .padding(.horizontal, 10)
                 .background(
-                    isSelected ? AppTheme.deepWater : AppTheme.surfaceInset,
+                    isSelected ? AppTheme.deepWater : Color.white,
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                 )
                 .overlay {
@@ -1581,8 +1581,8 @@ struct HubShareUploadResult: Codable, Equatable, Sendable {
         let appName = AppStrings.localized("app.displayName")
         return [
             String(format: AppStrings.localized("这是我制作的《%@》"), safeTitle),
-            String(format: AppStrings.localized("使用暗号 %@ 获取"), code),
-            String(format: AppStrings.localized("使用方法：打开 \"%@\" - 点击首页右下角“🔑暗号”按钮 - 输入暗号"), appName)
+            String(format: AppStrings.localized("获取暗号 %@"), code),
+            String(format: AppStrings.localized("使用方法：打开 \"%@\" App- 点击首页右下角“🔑暗号”按钮 - 输入暗号"), appName)
         ].joined(separator: "\n")
     }
 
