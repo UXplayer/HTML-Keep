@@ -2098,17 +2098,33 @@ private struct AppRuntimePresentationModifier: ViewModifier {
                     .frame(width: 0, height: 0)
             )
             .onAppear {
-                presentDiscountOfferIfNeeded(for: proEntitlementMarketingFunnelStore.discountSheetPresentationRequestID)
+                syncDiscountOfferPresentation(for: proEntitlementMarketingFunnelStore.discountSheetPresentationRequestID)
             }
             .onChange(of: proEntitlementMarketingFunnelStore.discountSheetPresentationRequestID) { _, requestID in
-                presentDiscountOfferIfNeeded(for: requestID)
+                syncDiscountOfferPresentation(for: requestID)
+            }
+            .onChange(of: proEntitlementStore.proEntitlementState) { _, _ in
+                syncDiscountOfferPresentation(for: proEntitlementMarketingFunnelStore.discountSheetPresentationRequestID)
             }
     }
 
-    private func presentDiscountOfferIfNeeded(for requestID: UUID?) {
-        guard let requestID, handledDiscountOfferRequestID != requestID else { return }
+    private func syncDiscountOfferPresentation(for requestID: UUID?) {
+        guard !proEntitlementStore.hasProEntitlement else {
+            clearDiscountOfferPresentation()
+            return
+        }
+        guard let requestID else {
+            clearDiscountOfferPresentation()
+            return
+        }
+        guard handledDiscountOfferRequestID != requestID else { return }
         handledDiscountOfferRequestID = requestID
         discountOfferPresentation = DiscountOfferPresentation(id: requestID)
+    }
+
+    private func clearDiscountOfferPresentation() {
+        handledDiscountOfferRequestID = nil
+        discountOfferPresentation = nil
     }
 }
 
