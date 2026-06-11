@@ -125,7 +125,7 @@
 "未登录 iCloud" = "Nicht bei iCloud angemeldet";
 "iCloud 暂不可用" = "iCloud vorübergehend nicht verfügbar";
 "打开设置" = "Einstellungen";
-"立即同步" = "Sync";
+"立即同步" = "Jetzt synchronisieren";
 "还没有同步过" = "Noch nicht synchronisiert";
 "点立即同步检查其他设备的变化。" = "Tippe auf Sync, um Änderungen von anderen Geräten zu prüfen.";
 "下载：从 iCloud 收到更新" = "Download: Updates aus iCloud erhalten";
@@ -210,7 +210,7 @@
 "内容" = "Inhalt";
 "可以试试网页标题、文件名，或网页里出现过的文字。" = "Versuche es mit einem Seitentitel, Dateinamen oder Wörtern, die auf einer Seite vorkommen.";
 "同步失败，暂时无法打开。可以删除后重新同步。" = "Die Synchronisierung ist fehlgeschlagen, daher kann dies noch nicht geöffnet werden. Du kannst es löschen und erneut synchronisieren.";
-"名称" = "Name";
+"名称" = "Bezeichnung";
 "当前只搜索了标题、页面名和文件名。你也可以继续搜索全部文件内容。" = "Es wurden bisher nur Titel, Seitennamen und Dateinamen durchsucht. Du kannst auch alle Dateiinhalte durchsuchen.";
 "搜索" = "Suche";
 "搜索全部文件内容" = "Alle Dateiinhalte durchsuchen";
@@ -306,7 +306,7 @@
 "电脑发布已开启" = "Computer-Veröffentlichung gestartet";
 "整理名称与入口" = "Namen und Einstiege ordnen";
 "不要关闭这个 App" = "Diese App nicht schließen";
-"命名" = "Name";
+"命名" = "Benennen";
 "复制网址" = "URL kopieren";
 "保持手机在前台" = "Telefon im Vordergrund lassen";
 "自动更新" = "Automatisch aktualisieren";
@@ -572,7 +572,7 @@
 "proEntitlement.discount.badgeFormat" = "%@ Rabatt";
 "proEntitlement.discount.fallbackBadge" = "Lifetime-Deal";
 "proEntitlement.discount.snackbarProductName" = "Lifetime";
-"proEntitlement.discount.snackbarOfferLabel" = "Deal";
+"proEntitlement.discount.snackbarOfferLabel" = "Angebot";
 "proEntitlement.discount.snackbarFullOfferFormat" = "%@-%@";
 "proEntitlement.discount.snackbarFormat" = "%@";
 "proEntitlement.status.openedFormat" = "%@ ist aktiv";
@@ -660,3 +660,12 @@
 "重新输入暗号" = "Code erneut eingeben";
 "预览" = "Vorschau";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "Standardmäßig 30 Tage gespeichert. Hub bereinigt es nach Ablauf automatisch.";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "Bildeinstellungen";
+"imageReader.mode.title" = "Ansichtsmodus";
+"imageReader.mode.normal" = "Standard";
+"imageReader.mode.continuous" = "Fortlaufend";
+"imageReader.direction.title" = "Scrollrichtung";
+"imageReader.direction.vertical" = "Senkrecht";
+"imageReader.direction.horizontal" = "Waagerecht";

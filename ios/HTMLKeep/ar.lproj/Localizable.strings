@@ -660,3 +660,12 @@
 "重新输入暗号" = "إدخال الرمز مرة أخرى";
 "预览" = "معاينة";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "يُحتفظ به لمدة 30 يومًا افتراضيًا. سيقوم Hub بتنظيفه بعد انتهاء الصلاحية.";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "إعدادات الصور";
+"imageReader.mode.title" = "وضع العرض";
+"imageReader.mode.normal" = "عادي";
+"imageReader.mode.continuous" = "مستمر";
+"imageReader.direction.title" = "اتجاه التمرير";
+"imageReader.direction.vertical" = "عمودي";
+"imageReader.direction.horizontal" = "أفقي";

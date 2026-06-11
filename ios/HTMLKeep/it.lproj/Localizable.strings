@@ -2,7 +2,7 @@
 "importDate.pastYearFormat" = "d MMM yyyy";
 "syncReason.appLaunch" = "avvio app";
 "syncReason.delete" = "elimina";
-"syncReason.followUp" = "follow-up";
+"syncReason.followUp" = "seguito";
 "syncReason.foreground" = "primo piano";
 "syncReason.import" = "importa";
 "syncReason.manualDebug" = "debug manuale";
@@ -87,7 +87,7 @@
 "复制" = "Copia";
 "外观" = "Aspetto";
 "主题色" = "Tema";
-"显示" = "Display";
+"显示" = "Visualizza";
 "支持" = "Supporto";
 "关于" = "Informazioni";
 "浅色" = "Chiaro";
@@ -610,15 +610,15 @@
 "限时永久会员" = "Pro a vita a tempo limitato";
 
 /* Hub share code */
-"%d分钟" = "%dm";
-"%d天" = "%dd";
-"%d小时" = "%dh";
+"%d分钟" = "%d min";
+"%d天" = "%d g";
+"%d小时" = "%d h";
 "Hub 暗号" = "Codice Hub";
 "Hub 返回了无法识别的响应。" = "Hub ha restituito una risposta non riconosciuta.";
 "Pro" = "Pro";
 "上传后这份文件会公开，任何拿到暗号或链接的人都可以下载。" = "Dopo il caricamento, questo file sarà pubblico. Chiunque abbia il codice o il link potrà scaricarlo.";
 "上传后这份文件会公开，任何拿到暗号的人都可以下载。" = "Dopo il caricamento, questo file sarà pubblico. Chiunque abbia il codice potrà scaricarlo.";
-"不足 1 小时" = "Less than 1h";
+"不足 1 小时" = "Meno di 1 h";
 "使用方法：打开 \"%@\" App- 点击首页右下角“🔑暗号”按钮 - 输入暗号" = "Come usarlo: apri l’app \"%@\" - tocca il pulsante 🔑 Codice in basso a destra nella Home - inserisci il codice";
 "分享链接：%@" = "Link di condivisione: %@";
 "同一份文件重复生成时，会直接复用已有暗号。" = "Se generi di nuovo un codice per lo stesso file, verrà riutilizzato quello esistente.";
@@ -639,7 +639,7 @@
 "正在上传 %d%%" = "Caricamento %d%%";
 "正在下载并整理这个暗号，请稍等。" = "Download e preparazione del codice. Attendi.";
 "正在准备上传..." = "Preparazione caricamento...";
-"永久保存" = "Kept permanently";
+"永久保存" = "Salvato in modo permanente";
 "没有下载到可导入的文件。" = "Non è stato scaricato alcun file importabile.";
 "生成分享暗号" = "Genera codice di condivisione";
 "生成失败" = "Impossibile generare il codice";
@@ -655,8 +655,17 @@
 "这个暗号对应的本机项目已经不在当前网页列表中。" = "Il progetto locale di questo codice non è più nell’elenco pagine corrente.";
 "这个暗号默认保留 30 天。" = "Questo codice viene conservato per 30 giorni per impostazione predefinita.";
 "这个暗号默认保留 30 天，过期后会自动清理。" = "Questo codice viene conservato per 30 giorni per impostazione predefinita e sarà eliminato automaticamente alla scadenza.";
-"这是我制作的《%@》" = "I made \"%@\"";
+"这是我制作的《%@》" = "Ho creato \"%@\"";
 "重新生成" = "Riprova";
 "重新输入暗号" = "Inserisci di nuovo il codice";
 "预览" = "Anteprima";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "Conservato per 30 giorni per impostazione predefinita. Hub lo eliminerà alla scadenza.";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "Impostazioni immagine";
+"imageReader.mode.title" = "Modalità di visualizzazione";
+"imageReader.mode.normal" = "Normale";
+"imageReader.mode.continuous" = "Continuo";
+"imageReader.direction.title" = "Direzione di scorrimento";
+"imageReader.direction.vertical" = "Verticale";
+"imageReader.direction.horizontal" = "Orizzontale";

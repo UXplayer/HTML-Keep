@@ -31,7 +31,7 @@
 "远端快照：已找到" = "Instantánea remota: encontrada";
 "远端快照：未找到，将创建首个快照" = "Instantánea remota: no encontrada; se creará la primera";
 "远端网页数：" = "Páginas remotas: ";
-"错误：" = "Error: ";
+"错误：" = "Se produjo un error: ";
 "保存" = "Guardar";
 "取消" = "Cancelar";
 "删除" = "Eliminar";
@@ -660,3 +660,12 @@
 "重新输入暗号" = "Introducir código otra vez";
 "预览" = "Vista previa";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "Se conserva 30 días de forma predeterminada. Hub lo limpiará al caducar.";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "Ajustes de imagen";
+"imageReader.mode.title" = "Modo de visualización";
+"imageReader.mode.normal" = "Modo normal";
+"imageReader.mode.continuous" = "Continuo";
+"imageReader.direction.title" = "Dirección de desplazamiento";
+"imageReader.direction.vertical" = "En vertical";
+"imageReader.direction.horizontal" = "En horizontal";

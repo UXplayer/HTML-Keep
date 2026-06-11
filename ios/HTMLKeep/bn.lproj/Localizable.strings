@@ -660,3 +660,12 @@
 "重新输入暗号" = "আবার কোড লিখুন";
 "预览" = "প্রিভিউ";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "ডিফল্টভাবে ৩০ দিন রাখা হয়। মেয়াদ শেষ হলে Hub এটি পরিষ্কার করবে।";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "ছবির সেটিংস";
+"imageReader.mode.title" = "দেখার মোড";
+"imageReader.mode.normal" = "সাধারণ";
+"imageReader.mode.continuous" = "ধারাবাহিক";
+"imageReader.direction.title" = "স্ক্রলের দিক";
+"imageReader.direction.vertical" = "উল্লম্ব";
+"imageReader.direction.horizontal" = "অনুভূমিক";

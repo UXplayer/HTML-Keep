@@ -25,7 +25,7 @@
 "本机网页数：" = "Lokale pagina's: ";
 "结果：跳过同步，本地数据未回滚。" = "Resultaat: synchronisatie overgeslagen; lokale gegevens zijn niet teruggezet.";
 "耗时：" = "Duur: ";
-"触发：" = "Trigger: ";
+"触发：" = "Geactiveerd: ";
 "远端删除墓碑：" = "Remote verwijderrecords: ";
 "远端导出时间：" = "Remote exporttijd: ";
 "远端快照：已找到" = "Remote snapshot: gevonden";
@@ -87,7 +87,7 @@
 "复制" = "Kopieer";
 "外观" = "Weergave";
 "主题色" = "Thema";
-"显示" = "Display";
+"显示" = "Weergave";
 "支持" = "Support";
 "关于" = "Over";
 "浅色" = "Licht";
@@ -125,7 +125,7 @@
 "未登录 iCloud" = "Niet ingelogd bij iCloud";
 "iCloud 暂不可用" = "iCloud tijdelijk niet beschikbaar";
 "打开设置" = "Open Instellingen";
-"立即同步" = "Sync";
+"立即同步" = "Nu synchroniseren";
 "还没有同步过" = "Nog niet gesynchroniseerd";
 "点立即同步检查其他设备的变化。" = "Tik op Sync om wijzigingen van andere apparaten te controleren.";
 "下载：从 iCloud 收到更新" = "Download: updates ontvangen van iCloud";
@@ -595,7 +595,7 @@
 "已是可用版本" = "De huidige versie wordt ondersteund";
 "需要更新" = "Update vereist";
 "立即更新" = "Nu bijwerken";
-"稍后再说" = "Later";
+"稍后再说" = "Niet nu";
 "前往更新" = "Bijwerken";
 "长按、编辑小组件，选择网页项目。" = "Houd uw vinger op de widget, bewerk deze en kies vervolgens een paginaproject.";
 "proEntitlement.storeKit.loadingButtonTitle" = "Producten laden...";
@@ -610,15 +610,15 @@
 "限时永久会员" = "Pro levenslang tijdelijk";
 
 /* Hub share code */
-"%d分钟" = "%dm";
-"%d天" = "%dd";
-"%d小时" = "%dh";
+"%d分钟" = "%d min";
+"%d天" = "%d d";
+"%d小时" = "%d u";
 "Hub 暗号" = "Hub-code";
 "Hub 返回了无法识别的响应。" = "Hub gaf een onbekende reactie terug.";
 "Pro" = "Pro";
 "上传后这份文件会公开，任何拿到暗号或链接的人都可以下载。" = "Na het uploaden is dit bestand openbaar. Iedereen met de code of link kan het downloaden.";
 "上传后这份文件会公开，任何拿到暗号的人都可以下载。" = "Na het uploaden is dit bestand openbaar. Iedereen met de code kan het downloaden.";
-"不足 1 小时" = "Less than 1h";
+"不足 1 小时" = "Minder dan 1 u";
 "使用方法：打开 \"%@\" App- 点击首页右下角“🔑暗号”按钮 - 输入暗号" = "Zo gebruik je het: open de app \"%@\" - tik rechtsonder op Home op de knop 🔑 Code - voer de code in";
 "分享链接：%@" = "Deellink: %@";
 "同一份文件重复生成时，会直接复用已有暗号。" = "Als je opnieuw een code voor hetzelfde bestand maakt, wordt de bestaande code hergebruikt.";
@@ -639,7 +639,7 @@
 "正在上传 %d%%" = "Uploaden %d%%";
 "正在下载并整理这个暗号，请稍等。" = "Deze code wordt gedownload en voorbereid. Even geduld.";
 "正在准备上传..." = "Upload voorbereiden...";
-"永久保存" = "Kept permanently";
+"永久保存" = "Permanent bewaard";
 "没有下载到可导入的文件。" = "Er is geen importeerbaar bestand gedownload.";
 "生成分享暗号" = "Deelcode maken";
 "生成失败" = "Code kon niet worden gemaakt";
@@ -655,8 +655,17 @@
 "这个暗号对应的本机项目已经不在当前网页列表中。" = "Het lokale project voor deze code staat niet meer in de huidige paginalijst.";
 "这个暗号默认保留 30 天。" = "Deze code wordt standaard 30 dagen bewaard.";
 "这个暗号默认保留 30 天，过期后会自动清理。" = "Deze code wordt standaard 30 dagen bewaard en na afloop automatisch opgeschoond.";
-"这是我制作的《%@》" = "I made \"%@\"";
+"这是我制作的《%@》" = "Ik heb \"%@\" gemaakt";
 "重新生成" = "Opnieuw proberen";
 "重新输入暗号" = "Code opnieuw invoeren";
 "预览" = "Voorbeeld";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "Standaard 30 dagen bewaard. Hub ruimt het na afloop automatisch op.";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "Afbeeldingsinstellingen";
+"imageReader.mode.title" = "Weergavemodus";
+"imageReader.mode.normal" = "Normaal";
+"imageReader.mode.continuous" = "Doorlopend";
+"imageReader.direction.title" = "Scrolrichting";
+"imageReader.direction.vertical" = "Verticaal";
+"imageReader.direction.horizontal" = "Horizontaal";

@@ -260,7 +260,7 @@
 "guide.homeScreen.settings" = "Réglages";
 "guide.homeScreen.search" = "Rechercher";
 "这个网页项目已经不在本机网页列表中。" = "Ce projet de page web n’est plus dans la liste des pages locales.";
-"扩展" = "Extensions";
+"扩展" = "Modules";
 "Agent 管理" = "Automatisation Agent";
 "复制本机地址给 Agent" = "Copier l’adresse locale pour l’Agent";
 "开启专家模式" = "Activer le mode expert";
@@ -660,3 +660,12 @@
 "重新输入暗号" = "Saisir à nouveau le code";
 "预览" = "Aperçu";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "Conservé 30 jours par défaut. Hub le nettoiera après expiration.";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "Réglages de l’image";
+"imageReader.mode.title" = "Mode d’affichage";
+"imageReader.mode.normal" = "Mode normal";
+"imageReader.mode.continuous" = "Continu";
+"imageReader.direction.title" = "Sens du défilement";
+"imageReader.direction.vertical" = "Verticale";
+"imageReader.direction.horizontal" = "Horizontale";

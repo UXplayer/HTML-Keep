@@ -659,3 +659,12 @@
 "重新输入暗号" = "重新輸入暗號";
 "预览" = "預覽";
 "默认保留 30 天，过期后 Hub 会自动清理。" = "預設保留 30 天，過期後 Hub 會自動清理。";
+
+"imageReader.pageCountFormat" = "%d / %d";
+"imageReader.settings.title" = "圖片設定";
+"imageReader.mode.title" = "瀏覽模式";
+"imageReader.mode.normal" = "一般";
+"imageReader.mode.continuous" = "連續";
+"imageReader.direction.title" = "滑動方向";
+"imageReader.direction.vertical" = "上下";
+"imageReader.direction.horizontal" = "左右";
