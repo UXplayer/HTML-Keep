@@ -69,6 +69,11 @@
 "无法清除缓存" = "Cache kon niet worden gewist";
 "这会清除当前网页项目保存的进度和缓存数据，不会删除网页文件。" = "Dit wist opgeslagen voortgang en cachegegevens van het huidige paginaproject. Paginabestanden worden niet verwijderd.";
 "分享" = "Deel";
+"打印" = "Druk af";
+"无法打印" = "Afdrukken niet mogelijk";
+"当前设备不支持系统打印。" = "Dit apparaat ondersteunt systeemafdrukken niet.";
+"请等网页加载完成后再试。" = "Wacht tot de pagina volledig is geladen en probeer het opnieuw.";
+"无法打开系统打印面板。" = "Het systeemafdrukpaneel kon niet worden geopend.";
 "正在准备分享文件..." = "Deelbestand voorbereiden...";
 "更多操作" = "Meer acties";
 "缩放" = "Zoomen";

@@ -15,6 +15,7 @@ struct WebPageWebView: UIViewRepresentable {
     let onLocalFileNavigation: (URL) -> Void
     let onScrollOffsetChange: (CGFloat) -> Void
     let onTopOverlayPreferenceChange: (Bool) -> Void
+    let onWebViewReady: (WKWebView) -> Void
     let viewportBackground: ViewerViewportBackground
 
     private static let scrollMetricsMessageName = "htmlAnywhereScrollMetrics"
@@ -72,6 +73,7 @@ struct WebPageWebView: UIViewRepresentable {
         webView.applyViewportInsetsIfNeeded(force: true)
 
         load(in: webView)
+        onWebViewReady(webView)
         return webView
     }
 

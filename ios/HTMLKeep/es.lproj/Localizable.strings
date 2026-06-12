@@ -69,6 +69,11 @@
 "无法清除缓存" = "No se pudo borrar la caché";
 "这会清除当前网页项目保存的进度和缓存数据，不会删除网页文件。" = "Esto borra el progreso guardado y la caché del proyecto actual. No eliminará los archivos de la página.";
 "分享" = "Compartir";
+"打印" = "Imprimir";
+"无法打印" = "No se pudo imprimir";
+"当前设备不支持系统打印。" = "Este dispositivo no admite la impresión del sistema.";
+"请等网页加载完成后再试。" = "Espera a que la página termine de cargar e inténtalo de nuevo.";
+"无法打开系统打印面板。" = "No se pudo abrir el panel de impresión del sistema.";
 "正在准备分享文件..." = "Preparando archivo para compartir...";
 "更多操作" = "Más acciones";
 "缩放" = "Zoom";

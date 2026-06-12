@@ -69,6 +69,11 @@
 "无法清除缓存" = "Cache konnte nicht gelöscht werden";
 "这会清除当前网页项目保存的进度和缓存数据，不会删除网页文件。" = "Dies löscht gespeicherten Fortschritt und Cache-Daten des aktuellen Seitenprojekts. Die Seitendateien werden nicht gelöscht.";
 "分享" = "Teilen";
+"打印" = "Drucken";
+"无法打印" = "Drucken nicht möglich";
+"当前设备不支持系统打印。" = "Dieses Gerät unterstützt das Systemdrucken nicht.";
+"请等网页加载完成后再试。" = "Warte, bis die Seite vollständig geladen ist, und versuche es erneut.";
+"无法打开系统打印面板。" = "Das Systemdruckfenster konnte nicht geöffnet werden.";
 "正在准备分享文件..." = "Freigabedatei wird vorbereitet...";
 "更多操作" = "Weitere Aktionen";
 "缩放" = "Zoom";

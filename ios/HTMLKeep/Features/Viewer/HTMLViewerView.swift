@@ -2,6 +2,7 @@ import CryptoKit
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import WebKit
 
 private let viewerTopChromeFadeDistance: CGFloat = 72
 private let viewerLoadingIndicatorDelay: TimeInterval = 0.35
@@ -36,6 +37,7 @@ struct HTMLViewerView: View {
     @State private var isSharePreparationOverlayVisible = false
     @State private var sharePreparationID: UUID?
     @State private var shareErrorMessage: String?
+    @State private var printErrorMessage: String?
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
     @State private var isClearCacheAlertPresented = false
@@ -47,6 +49,7 @@ struct HTMLViewerView: View {
     @State private var activeEntryID: WebPageEntry.ID?
     @State private var webContentOffsetY: CGFloat = 0
     @State private var webContentHasTopPinnedOverlay = false
+    @StateObject private var printableWebViewReference = ViewerPrintableWebViewReference()
 
     var body: some View {
         ZStack {
@@ -67,6 +70,7 @@ struct HTMLViewerView: View {
                     onLocalFileNavigation: handleLocalFileNavigation,
                     onScrollOffsetChange: handleWebScrollOffsetChange,
                     onTopOverlayPreferenceChange: handleTopOverlayPreferenceChange,
+                    onWebViewReady: handleWebViewReady,
                     viewportBackground: viewportBackground
                 )
                 .id(webViewIdentity)
@@ -148,6 +152,16 @@ struct HTMLViewerView: View {
             }
         } message: {
             Text(shareErrorMessage ?? "")
+        }
+        .alert(
+            AppStrings.localized("无法打印"),
+            isPresented: printErrorBinding
+        ) {
+            Button(AppStrings.localized("知道了"), role: .cancel) {
+                printErrorMessage = nil
+            }
+        } message: {
+            Text(printErrorMessage ?? "")
         }
         .alert(
             AppStrings.localized("清除缓存数据？"),
@@ -385,6 +399,14 @@ struct HTMLViewerView: View {
             Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
         }
 
+        Button {
+            performActionsMenuAction {
+                startPrintingFromActionsMenu()
+            }
+        } label: {
+            Label(AppStrings.localized("打印"), systemImage: "printer")
+        }
+
         if AppDistribution.current.supportsHubShareAuthoring {
             Button {
                 performActionsMenuAction {
@@ -528,6 +550,16 @@ struct HTMLViewerView: View {
         }
     }
 
+    private var printErrorBinding: Binding<Bool> {
+        Binding {
+            printErrorMessage != nil
+        } set: { isPresented in
+            if !isPresented {
+                printErrorMessage = nil
+            }
+        }
+    }
+
     private var clearCacheErrorBinding: Binding<Bool> {
         Binding {
             clearCacheErrorMessage != nil
@@ -623,8 +655,56 @@ struct HTMLViewerView: View {
         webContentHasTopPinnedOverlay = prefersTopSafeArea
     }
 
+    private func handleWebViewReady(_ webView: WKWebView) {
+        printableWebViewReference.webView = webView
+    }
+
     private func startSharingFromActionsMenu() {
         prepareShare()
+    }
+
+    private func startPrintingFromActionsMenu() {
+        guard UIPrintInteractionController.isPrintingAvailable else {
+            printErrorMessage = AppStrings.localized("当前设备不支持系统打印。")
+            return
+        }
+
+        guard loadState == .loaded, let webView = printableWebViewReference.webView, entryExists else {
+            printErrorMessage = AppStrings.localized("请等网页加载完成后再试。")
+            return
+        }
+
+        let printInfo = UIPrintInfo(dictionary: nil)
+        printInfo.outputType = .general
+        printInfo.jobName = currentProject.title
+
+        let printController = UIPrintInteractionController.shared
+        printController.printInfo = printInfo
+        printController.printFormatter = webView.viewPrintFormatter()
+        printController.showsNumberOfCopies = true
+        printController.showsPaperOrientation = true
+
+        let completion: UIPrintInteractionController.CompletionHandler = { _, _, error in
+            if let error {
+                printErrorMessage = error.localizedDescription
+            }
+        }
+
+        let didPresent: Bool
+        if let sourceView = Self.printPresentationSourceView() {
+            didPresent = printController.present(
+                from: Self.printPresentationSourceRect(in: sourceView),
+                in: sourceView,
+                animated: true,
+                completionHandler: completion
+            )
+        } else {
+            didPresent = printController.present(animated: true, completionHandler: completion)
+        }
+
+        if !didPresent {
+            printErrorMessage = AppStrings.localized("无法打开系统打印面板。")
+        }
     }
 
     private func startGeneratingHubCodeFromActionsMenu() {
@@ -724,6 +804,23 @@ struct HTMLViewerView: View {
             return nil
         }
         return String(filePath.dropFirst(rootPath.count + 1))
+    }
+
+    private static func printPresentationSourceView() -> UIView? {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .rootViewController?
+            .topmostPresentedViewController
+            .view
+    }
+
+    private static func printPresentationSourceRect(in view: UIView) -> CGRect {
+        let sourceSize: CGFloat = 1
+        let x = max(view.bounds.maxX - view.safeAreaInsets.right - 28, view.bounds.midX)
+        let y = max(view.safeAreaInsets.top + 28, view.bounds.minY + 28)
+        return CGRect(x: x, y: y, width: sourceSize, height: sourceSize)
     }
 
     private static let directoryEntryFileNames = [
@@ -2459,6 +2556,27 @@ struct ActivityShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context _: Context) {}
+}
+
+private final class ViewerPrintableWebViewReference: ObservableObject {
+    weak var webView: WKWebView?
+}
+
+private extension UIViewController {
+    var topmostPresentedViewController: UIViewController {
+        if let presentedViewController {
+            return presentedViewController.topmostPresentedViewController
+        }
+        if let navigationController = self as? UINavigationController,
+           let visibleViewController = navigationController.visibleViewController {
+            return visibleViewController.topmostPresentedViewController
+        }
+        if let tabBarController = self as? UITabBarController,
+           let selectedViewController = tabBarController.selectedViewController {
+            return selectedViewController.topmostPresentedViewController
+        }
+        return self
+    }
 }
 
 enum ViewerLoadState: Equatable {

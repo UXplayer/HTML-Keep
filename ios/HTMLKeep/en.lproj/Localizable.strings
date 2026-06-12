@@ -115,6 +115,11 @@
 "从文件选择" = "Choose from Files";
 "这会清除当前网页项目保存的进度和缓存数据，不会删除网页文件。" = "This clears saved progress and cache data for the current page project. It will not delete the page files.";
 "分享" = "Share";
+"打印" = "Print";
+"无法打印" = "Could Not Print";
+"当前设备不支持系统打印。" = "This device does not support system printing.";
+"请等网页加载完成后再试。" = "Wait for the page to finish loading, then try again.";
+"无法打开系统打印面板。" = "Could not open the system print panel.";
 "正在准备分享文件..." = "Preparing Share File...";
 "生成暗号" = "Generate Code";
 "查看暗号" = "View Code";

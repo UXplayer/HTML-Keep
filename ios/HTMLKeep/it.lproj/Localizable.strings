@@ -69,6 +69,11 @@
 "无法清除缓存" = "Impossibile cancellare la cache";
 "这会清除当前网页项目保存的进度和缓存数据，不会删除网页文件。" = "Cancella i progressi salvati e i dati della cache del progetto corrente. Non eliminerà i file della pagina.";
 "分享" = "Condividi";
+"打印" = "Stampa";
+"无法打印" = "Impossibile stampare";
+"当前设备不支持系统打印。" = "Questo dispositivo non supporta la stampa di sistema.";
+"请等网页加载完成后再试。" = "Attendi il completamento del caricamento della pagina, poi riprova.";
+"无法打开系统打印面板。" = "Impossibile aprire il pannello di stampa di sistema.";
 "正在准备分享文件..." = "Preparazione file da condividere...";
 "更多操作" = "Altre azioni";
 "缩放" = "Zoom";
