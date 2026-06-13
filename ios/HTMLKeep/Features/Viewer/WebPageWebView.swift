@@ -69,7 +69,6 @@ struct WebPageWebView: UIViewRepresentable {
         webView.pageZoom = pageZoom
         webView.allowsBackForwardNavigationGestures = false
         webView.applyViewportBackground(viewportBackground)
-        webView.scrollView.alwaysBounceVertical = true
         webView.scrollView.delegate = context.coordinator
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         configureNonZoomingWebView(webView)
