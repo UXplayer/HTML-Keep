@@ -1007,7 +1007,7 @@ struct AppRootView: View {
                     } else {
                         MissingPageView()
                     }
-                case .viewer(let pageID, let entryID):
+                case .viewer(let pageID, let entryID, let navigationState):
                     if let page = library.page(withID: pageID) {
                         let entry = library.entry(withID: entryID, in: page) ?? library.defaultEntry(for: page)
                         HTMLViewerView(
@@ -1019,6 +1019,18 @@ struct AppRootView: View {
                             onDeletePage: {
                                 deletePage(page)
                                 router.popToRoot()
+                            },
+                            onCloseViewer: {
+                                router.popToRoot()
+                            },
+                            isProjectNavigationChild: router.viewerHasParent(pageID: page.id),
+                            isRouteActive: router.path.last == .viewer(pageID, entryID, navigationState),
+                            entryNavigationState: navigationState,
+                            onOpenEntry: { entry, navigationState in
+                                router.push(page: page, entry: entry, navigationState: navigationState)
+                            },
+                            onReplaceRootEntry: { entry in
+                                router.replaceViewerRoot(page: page, entry: entry)
                             },
                             onRuntimeStorageChanged: {
                                 scheduleRuntimeStorageSync()
@@ -1090,7 +1102,7 @@ struct AppRootView: View {
                     } else {
                         MissingPageView()
                     }
-                case .deletedViewer(let pageID, let entryID):
+                case .deletedViewer(let pageID, let entryID, let navigationState):
                     if let deletedPage = accessibleRecentlyDeletedPage(withID: pageID) {
                         let entry = library.entry(withID: entryID, in: deletedPage) ??
                             library.defaultEntry(for: deletedPage)
@@ -1110,6 +1122,22 @@ struct AppRootView: View {
                             onPermanentlyDeletePage: {
                                 permanentlyDelete(deletedPage)
                                 router.openRecentlyDeleted()
+                            },
+                            onCloseViewer: {
+                                router.openRecentlyDeleted()
+                            },
+                            isProjectNavigationChild: router.deletedViewerHasParent(deletedPageID: deletedPage.id),
+                            isRouteActive: router.path.last == .deletedViewer(pageID, entryID, navigationState),
+                            entryNavigationState: navigationState,
+                            onOpenEntry: { entry, navigationState in
+                                router.pushDeletedViewer(
+                                    deletedPage: deletedPage,
+                                    entry: entry,
+                                    navigationState: navigationState
+                                )
+                            },
+                            onReplaceRootEntry: { entry in
+                                router.replaceDeletedViewerRoot(deletedPage: deletedPage, entry: entry)
                             },
                             onRuntimeStorageChanged: {},
                             onOpenProEntitlement: {
@@ -2386,8 +2414,18 @@ private enum SettingsPresentedSheet: Identifiable, Equatable {
 }
 
 private enum SettingsRecentlyDeletedRoute: Hashable {
-    case viewer(WebPage.ID, WebPageEntry.ID)
+    case viewer(WebPage.ID, WebPageEntry.ID, WebPageEntryNavigationState?)
     case fileViewer(WebPage.ID)
+}
+
+private extension Array where Element == SettingsRecentlyDeletedRoute {
+    func dropTrailingViewerRoutes(pageID: WebPage.ID) -> [SettingsRecentlyDeletedRoute] {
+        var routes = self
+        while case .viewer(let routePageID, _, _) = routes.last, routePageID == pageID {
+            routes.removeLast()
+        }
+        return routes
+    }
 }
 
 private struct SettingsProjectWidgetGuideSheet: View {
@@ -2570,7 +2608,7 @@ private struct SettingsRecentlyDeletedSheet: View {
     @ViewBuilder
     private func destination(for route: SettingsRecentlyDeletedRoute) -> some View {
         switch route {
-        case .viewer(let pageID, let entryID):
+        case .viewer(let pageID, let entryID, let navigationState):
             if let deletedPage = accessibleDeletedPage(withID: pageID) {
                 let selectedEntry = entry(entryID, deletedPage) ?? defaultEntry(deletedPage)
                 HTMLViewerView(
@@ -2589,6 +2627,19 @@ private struct SettingsRecentlyDeletedSheet: View {
                     onPermanentlyDeletePage: {
                         onPermanentlyDelete(deletedPage)
                         path = []
+                    },
+                    onCloseViewer: {
+                        path = []
+                    },
+                    isProjectNavigationChild: viewerHasParent(pageID: deletedPage.id),
+                    isRouteActive: path.last == .viewer(pageID, entryID, navigationState),
+                    entryNavigationState: navigationState,
+                    onOpenEntry: { entry, navigationState in
+                        path.append(.viewer(deletedPage.id, entry.id, navigationState))
+                    },
+                    onReplaceRootEntry: { entry in
+                        path = path.dropTrailingViewerRoutes(pageID: deletedPage.id) +
+                            [.viewer(deletedPage.id, entry.id, nil)]
                     },
                     onRuntimeStorageChanged: {}
                 )
@@ -2657,8 +2708,17 @@ private struct SettingsRecentlyDeletedSheet: View {
         if deletedPage.page.opensInNativeFileViewer || deletedPage.page.opensInSingleFilePreview {
             path.append(.fileViewer(deletedPage.id))
         } else {
-            path.append(.viewer(deletedPage.id, entry.id))
+            path.append(.viewer(deletedPage.id, entry.id, nil))
         }
+    }
+
+    private func viewerHasParent(pageID: WebPage.ID) -> Bool {
+        guard case .viewer(let currentPageID, _, _) = path.last,
+              currentPageID == pageID,
+              case .viewer(let previousPageID, _, _) = path.dropLast().last else {
+            return false
+        }
+        return previousPageID == pageID
     }
 }
 

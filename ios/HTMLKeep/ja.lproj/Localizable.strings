@@ -674,3 +674,7 @@
 "imageReader.direction.title" = "スクロール方向";
 "imageReader.direction.vertical" = "縦";
 "imageReader.direction.horizontal" = "横";
+"文件列表" = "ファイルリスト";
+"无法打开链接" = "リンクを開けませんでした";
+"系统无法打开这个链接：%@" = "システムはこのリンクを開けませんでした：%@";
+"这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。" = "このページは新しいウィンドウを開こうとしましたが、HTML Keep は現在のページ内容のみ表示できます。";

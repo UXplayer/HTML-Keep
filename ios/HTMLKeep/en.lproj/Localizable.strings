@@ -68,6 +68,9 @@
 "无法准备分享文件" = "Could Not Prepare Share File";
 "无法准备分享文件。" = "Could not prepare the file for sharing.";
 "无法打开网页" = "Could Not Open Page";
+"无法打开链接" = "Could Not Open Link";
+"系统无法打开这个链接：%@" = "The system could not open this link: %@";
+"这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。" = "This page tried to open a new window, but HTML Keep can only render the current page content.";
 "正在导入" = "Importing";
 "正在导入网页..." = "Importing Page...";
 "正在整理这个文件，请稍等。" = "Preparing this file. Please wait.";
@@ -503,6 +506,7 @@
 "已创建" = "Created";
 "未创建" = "Not Created";
 "文件清单" = "File List";
+"文件列表" = "File List";
 "失败阶段：" = "Failed Stage: ";
 "桌面小组件" = "Widgets";
 "网页入口" = "Web Page";

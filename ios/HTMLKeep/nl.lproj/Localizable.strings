@@ -674,3 +674,7 @@
 "imageReader.direction.title" = "Scrolrichting";
 "imageReader.direction.vertical" = "Verticaal";
 "imageReader.direction.horizontal" = "Horizontaal";
+"文件列表" = "Bestandenlijst";
+"无法打开链接" = "Link kan niet worden geopend";
+"系统无法打开这个链接：%@" = "Het systeem kon deze link niet openen: %@";
+"这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。" = "Deze pagina probeerde een nieuw venster te openen, maar HTML Keep kan alleen de inhoud van de huidige pagina weergeven.";

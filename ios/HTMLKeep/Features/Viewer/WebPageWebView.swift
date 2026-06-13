@@ -13,6 +13,8 @@ struct WebPageWebView: UIViewRepresentable {
     let onRequestDismiss: () -> Void
     let onRuntimeStorageChange: () -> Void
     let onLocalFileNavigation: (URL) -> Void
+    let onExternalNavigationFailure: (URL) -> Void
+    let onUnsupportedNewWindowRequest: () -> Void
     let onScrollOffsetChange: (CGFloat) -> Void
     let onTopOverlayPreferenceChange: (Bool) -> Void
     let onWebViewReady: (WKWebView) -> Void
@@ -63,7 +65,9 @@ struct WebPageWebView: UIViewRepresentable {
 
         let webView = ViewerWKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
         webView.pageZoom = pageZoom
+        webView.allowsBackForwardNavigationGestures = false
         webView.applyViewportBackground(viewportBackground)
         webView.scrollView.alwaysBounceVertical = true
         webView.scrollView.delegate = context.coordinator
@@ -92,6 +96,8 @@ struct WebPageWebView: UIViewRepresentable {
         context.coordinator.onRequestDismiss = onRequestDismiss
         context.coordinator.onRuntimeStorageChange = onRuntimeStorageChange
         context.coordinator.onLocalFileNavigation = onLocalFileNavigation
+        context.coordinator.onExternalNavigationFailure = onExternalNavigationFailure
+        context.coordinator.onUnsupportedNewWindowRequest = onUnsupportedNewWindowRequest
         context.coordinator.onScrollOffsetChange = onScrollOffsetChange
         context.coordinator.onTopOverlayPreferenceChange = onTopOverlayPreferenceChange
         context.coordinator.projectFolderURL = readAccessURL
@@ -103,7 +109,8 @@ struct WebPageWebView: UIViewRepresentable {
             viewerWebView.applyViewportBackground(viewportBackground)
             viewerWebView.applyViewportInsetsIfNeeded()
         }
-        if context.coordinator.loadedEntryURL != entryURL || context.coordinator.reloadToken != reloadToken {
+        if !Self.hasSameFilePathAndQuery(context.coordinator.loadedEntryURL, entryURL) ||
+            context.coordinator.reloadToken != reloadToken {
             load(in: webView)
         }
     }
@@ -114,6 +121,8 @@ struct WebPageWebView: UIViewRepresentable {
             onRequestDismiss: onRequestDismiss,
             onRuntimeStorageChange: onRuntimeStorageChange,
             onLocalFileNavigation: onLocalFileNavigation,
+            onExternalNavigationFailure: onExternalNavigationFailure,
+            onUnsupportedNewWindowRequest: onUnsupportedNewWindowRequest,
             onScrollOffsetChange: onScrollOffsetChange,
             onTopOverlayPreferenceChange: onTopOverlayPreferenceChange,
             projectFolderURL: readAccessURL
@@ -132,6 +141,14 @@ struct WebPageWebView: UIViewRepresentable {
         } else {
             webView.loadFileURL(entryURL, allowingReadAccessTo: readAccessURL)
         }
+    }
+
+    private static func hasSameFilePathAndQuery(_ lhs: URL?, _ rhs: URL) -> Bool {
+        guard let lhs else { return false }
+        return URL(fileURLWithPath: lhs.path).standardizedFileURL.path ==
+            URL(fileURLWithPath: rhs.path).standardizedFileURL.path &&
+            URLComponents(url: lhs, resolvingAgainstBaseURL: false)?.percentEncodedQuery ==
+            URLComponents(url: rhs, resolvingAgainstBaseURL: false)?.percentEncodedQuery
     }
 
     private final class ViewerWKWebView: WKWebView {
@@ -223,13 +240,15 @@ struct WebPageWebView: UIViewRepresentable {
         }
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler, UIScrollViewDelegate, UIGestureRecognizerDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UIScrollViewDelegate, UIGestureRecognizerDelegate {
         var loadedEntryURL: URL?
         var reloadToken: UUID?
         var onLoadStateChange: (ViewerLoadState) -> Void
         var onRequestDismiss: () -> Void
         var onRuntimeStorageChange: () -> Void
         var onLocalFileNavigation: (URL) -> Void
+        var onExternalNavigationFailure: (URL) -> Void
+        var onUnsupportedNewWindowRequest: () -> Void
         var onScrollOffsetChange: (CGFloat) -> Void
         var onTopOverlayPreferenceChange: (Bool) -> Void
         var projectFolderURL: URL
@@ -239,13 +258,14 @@ struct WebPageWebView: UIViewRepresentable {
         private var lastStableContentOffset: CGPoint = .zero
         private var browserTapSuppressionDeadline: CFTimeInterval = 0
         private var browserTapSuppressionOffset: CGPoint?
-        private var manualFileLoadURL: URL?
 
         init(
             onLoadStateChange: @escaping (ViewerLoadState) -> Void,
             onRequestDismiss: @escaping () -> Void,
             onRuntimeStorageChange: @escaping () -> Void,
             onLocalFileNavigation: @escaping (URL) -> Void,
+            onExternalNavigationFailure: @escaping (URL) -> Void,
+            onUnsupportedNewWindowRequest: @escaping () -> Void,
             onScrollOffsetChange: @escaping (CGFloat) -> Void,
             onTopOverlayPreferenceChange: @escaping (Bool) -> Void,
             projectFolderURL: URL
@@ -254,6 +274,8 @@ struct WebPageWebView: UIViewRepresentable {
             self.onRequestDismiss = onRequestDismiss
             self.onRuntimeStorageChange = onRuntimeStorageChange
             self.onLocalFileNavigation = onLocalFileNavigation
+            self.onExternalNavigationFailure = onExternalNavigationFailure
+            self.onUnsupportedNewWindowRequest = onUnsupportedNewWindowRequest
             self.onScrollOffsetChange = onScrollOffsetChange
             self.onTopOverlayPreferenceChange = onTopOverlayPreferenceChange
             self.projectFolderURL = projectFolderURL
@@ -281,14 +303,12 @@ struct WebPageWebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-            loadedEntryURL = virtualEntryURL ?? manualFileLoadURL ?? webView.url
             onLoadStateChange(.loading)
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            let finishedEntryURL = virtualEntryURL ?? manualFileLoadURL ?? webView.url
+            let finishedEntryURL = virtualEntryURL ?? webView.url
             loadedEntryURL = finishedEntryURL
-            manualFileLoadURL = nil
             if let viewerWebView = webView as? ViewerWKWebView {
                 viewerWebView.applyViewportInsetsIfNeeded(force: true)
                 viewerWebView.alignContentOffsetToTopInsetIfNeeded()
@@ -297,9 +317,6 @@ struct WebPageWebView: UIViewRepresentable {
             lastStableContentOffset = webView.scrollView.contentOffset
             onScrollOffsetChange(normalizedTopScrollOffset(for: webView.scrollView))
             webView.evaluateJavaScript("window.__htmlAnywhereCaptureLocalStorage && window.__htmlAnywhereCaptureLocalStorage();")
-            if let navigatedURL = finishedEntryURL ?? webView.url {
-                onLocalFileNavigation(navigatedURL)
-            }
             onLoadStateChange(.loaded)
         }
 
@@ -317,7 +334,7 @@ struct WebPageWebView: UIViewRepresentable {
             guard url.isFileURL else {
                 if Self.shouldOpenExternally(url) {
                     decisionHandler(.cancel)
-                    UIApplication.shared.open(url)
+                    openExternally(url)
                 } else {
                     decisionHandler(.allow)
                 }
@@ -329,7 +346,8 @@ struct WebPageWebView: UIViewRepresentable {
                 return
             }
 
-            if url.path == webView.url?.path, url.fragment != nil {
+            if url.fragment != nil,
+               Self.hasSameFilePathAndQuery(url, webView.url) {
                 decisionHandler(.allow)
                 return
             }
@@ -339,24 +357,38 @@ struct WebPageWebView: UIViewRepresentable {
                 return
             }
 
-            if manualFileLoadURL?.standardizedFileURL.path == target.entryURL.standardizedFileURL.path {
+            if Self.isSameNavigationURL(target.loadURL, loadedEntryURL) {
                 decisionHandler(.allow)
                 return
             }
 
-            manualFileLoadURL = target.entryURL.standardizedFileURL
-            loadedEntryURL = target.entryURL
             decisionHandler(.cancel)
-            onLocalFileNavigation(target.entryURL)
-            DispatchQueue.main.async { [weak self, weak webView] in
-                guard let self, let webView else {
-                    return
-                }
-                guard self.manualFileLoadURL?.path == target.entryURL.standardizedFileURL.path else {
-                    return
-                }
-                webView.loadFileURL(target.loadURL, allowingReadAccessTo: self.projectFolderURL)
+            onLocalFileNavigation(target.loadURL)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            guard navigationAction.targetFrame == nil else {
+                return nil
             }
+
+            guard let url = navigationAction.request.url else {
+                onUnsupportedNewWindowRequest()
+                return nil
+            }
+
+            if url.isFileURL {
+                openLocalFileNavigation(url, in: webView)
+            } else if Self.shouldOpenExternally(url) {
+                openExternally(url)
+            } else {
+                onUnsupportedNewWindowRequest()
+            }
+            return nil
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -483,6 +515,35 @@ struct WebPageWebView: UIViewRepresentable {
             }
         }
 
+        private func openExternally(_ url: URL) {
+            UIApplication.shared.open(url, options: [:]) { [weak self] success in
+                guard !success else {
+                    return
+                }
+                DispatchQueue.main.async {
+                    self?.onExternalNavigationFailure(url)
+                }
+            }
+        }
+
+        private func openLocalFileNavigation(_ url: URL, in webView: WKWebView) {
+            guard Self.isDescendant(url, of: projectFolderURL) else {
+                onUnsupportedNewWindowRequest()
+                return
+            }
+
+            guard let target = Self.localHTMLNavigationTarget(for: url, in: projectFolderURL) else {
+                webView.loadFileURL(url, allowingReadAccessTo: projectFolderURL)
+                return
+            }
+
+            guard !Self.isSameNavigationURL(target.loadURL, loadedEntryURL) else {
+                return
+            }
+
+            onLocalFileNavigation(target.loadURL)
+        }
+
         private static func isHTMLFileURL(_ url: URL) -> Bool {
             let fileExtension = url.pathExtension.lowercased()
             return fileExtension == "html" || fileExtension == "htm"
@@ -580,6 +641,22 @@ struct WebPageWebView: UIViewRepresentable {
             return candidatePath == rootPath || candidatePath.hasPrefix(rootPath + "/")
         }
 
+        private static func hasSameFilePathAndQuery(_ lhs: URL, _ rhs: URL?) -> Bool {
+            guard let rhs else { return false }
+            return fileSystemURL(for: lhs).path == fileSystemURL(for: rhs).path &&
+                URLComponents(url: lhs, resolvingAgainstBaseURL: false)?.percentEncodedQuery ==
+                URLComponents(url: rhs, resolvingAgainstBaseURL: false)?.percentEncodedQuery
+        }
+
+        private static func isSameNavigationURL(_ lhs: URL, _ rhs: URL?) -> Bool {
+            guard let rhs else { return false }
+            let lhsComponents = URLComponents(url: lhs, resolvingAgainstBaseURL: false)
+            let rhsComponents = URLComponents(url: rhs, resolvingAgainstBaseURL: false)
+            return fileSystemURL(for: lhs).path == fileSystemURL(for: rhs).path &&
+                lhsComponents?.percentEncodedQuery == rhsComponents?.percentEncodedQuery &&
+                lhsComponents?.percentEncodedFragment == rhsComponents?.percentEncodedFragment
+        }
+
         private static func shouldOpenExternally(_ url: URL) -> Bool {
             guard let scheme = url.scheme?.lowercased() else {
                 return false
@@ -603,7 +680,6 @@ struct WebPageWebView: UIViewRepresentable {
             didFail navigation: WKNavigation!,
             withError error: Error
         ) {
-            manualFileLoadURL = nil
             onLoadStateChange(.failed(error.localizedDescription))
         }
 
@@ -612,7 +688,6 @@ struct WebPageWebView: UIViewRepresentable {
             didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: Error
         ) {
-            manualFileLoadURL = nil
             onLoadStateChange(.failed(error.localizedDescription))
         }
     }

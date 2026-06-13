@@ -674,3 +674,7 @@
 "imageReader.direction.title" = "Direção de rolagem";
 "imageReader.direction.vertical" = "Na vertical";
 "imageReader.direction.horizontal" = "Na horizontal";
+"文件列表" = "Lista de arquivos";
+"无法打开链接" = "Não foi possível abrir o link";
+"系统无法打开这个链接：%@" = "O sistema não conseguiu abrir este link: %@";
+"这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。" = "Esta página tentou abrir uma nova janela, mas o HTML Keep só pode mostrar o conteúdo da página atual.";

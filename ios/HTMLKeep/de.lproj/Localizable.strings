@@ -674,3 +674,7 @@
 "imageReader.direction.title" = "Scrollrichtung";
 "imageReader.direction.vertical" = "Senkrecht";
 "imageReader.direction.horizontal" = "Waagerecht";
+"文件列表" = "Dateiliste";
+"无法打开链接" = "Link konnte nicht geöffnet werden";
+"系统无法打开这个链接：%@" = "Das System konnte diesen Link nicht öffnen: %@";
+"这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。" = "Diese Seite wollte ein neues Fenster öffnen, aber HTML Keep kann nur den Inhalt der aktuellen Seite anzeigen.";

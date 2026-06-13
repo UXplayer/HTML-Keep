@@ -673,3 +673,7 @@
 "imageReader.direction.title" = "滑動方向";
 "imageReader.direction.vertical" = "上下";
 "imageReader.direction.horizontal" = "左右";
+"文件列表" = "檔案列表";
+"无法打开链接" = "無法開啟連結";
+"系统无法打开这个链接：%@" = "系統無法開啟這個連結：%@";
+"这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。" = "這個網頁嘗試開啟新視窗，但 HTML Keep 只能顯示目前網頁內容。";

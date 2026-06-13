@@ -16,6 +16,12 @@ struct HTMLViewerView: View {
     let onDeletePage: () -> Void
     var onRestoreDeletedPage: (() -> Bool)? = nil
     var onPermanentlyDeletePage: (() -> Void)? = nil
+    var onCloseViewer: (() -> Void)? = nil
+    var isProjectNavigationChild: Bool = false
+    var isRouteActive: Bool = true
+    var entryNavigationState: WebPageEntryNavigationState? = nil
+    var onOpenEntry: ((WebPageEntry, WebPageEntryNavigationState?) -> Void)? = nil
+    var onReplaceRootEntry: ((WebPageEntry) -> Void)? = nil
     let onRuntimeStorageChanged: () -> Void
     var onActivityChanged: () -> Void = {}
     var onOpenProEntitlement: () -> Void = {}
@@ -38,6 +44,7 @@ struct HTMLViewerView: View {
     @State private var sharePreparationID: UUID?
     @State private var shareErrorMessage: String?
     @State private var printErrorMessage: String?
+    @State private var externalLinkErrorMessage: String?
     @State private var isRenameAlertPresented = false
     @State private var draftProjectTitle = ""
     @State private var isClearCacheAlertPresented = false
@@ -59,7 +66,7 @@ struct HTMLViewerView: View {
             if entryExists {
                 WebPageWebView(
                     page: page,
-                    entryURL: entryURL,
+                    entryURL: entryLoadURL,
                     entryHTML: entryHTML,
                     readAccessURL: folderURL,
                     reloadToken: reloadToken,
@@ -68,6 +75,8 @@ struct HTMLViewerView: View {
                     onRequestDismiss: dismissViewer,
                     onRuntimeStorageChange: onRuntimeStorageChanged,
                     onLocalFileNavigation: handleLocalFileNavigation,
+                    onExternalNavigationFailure: handleExternalNavigationFailure,
+                    onUnsupportedNewWindowRequest: handleUnsupportedNewWindowRequest,
                     onScrollOffsetChange: handleWebScrollOffsetChange,
                     onTopOverlayPreferenceChange: handleTopOverlayPreferenceChange,
                     onWebViewReady: handleWebViewReady,
@@ -96,22 +105,14 @@ struct HTMLViewerView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(isPhoneLandscape)
         .toolbar(isPhoneLandscape ? .hidden : .visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                if entryExists && !isPhoneLandscape && !isReadOnlyPreview {
-                    Menu {
-                        htmlViewerActionsMenuContent
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(AppStrings.localized("更多操作"))
-                }
-            }
+        .toolbar { viewerToolbarContent }
+        .tint(Color(uiColor: .label))
+        .onChange(of: page.id) { _, _ in
+            activeEntryID = nil
         }
-        .background(
-            entryDirectoryInstaller
-        )
+        .onChange(of: entry.id) { _, _ in
+            activeEntryID = nil
+        }
         .background(
             navigationBarChromeInstaller
         )
@@ -139,6 +140,12 @@ struct HTMLViewerView: View {
         }
         .sheet(item: $presentedViewerSheet) { sheet in
             switch sheet {
+            case .fileList:
+                ViewerFileListSheet(
+                    entries: page.resolvedEntries,
+                    currentEntryID: currentEntry.id,
+                    onSelectEntry: selectEntryFromFileList
+                )
             case .zoom:
                 ViewerZoomSheet(zoomIndex: $webPageZoomIndex)
             }
@@ -162,6 +169,16 @@ struct HTMLViewerView: View {
             }
         } message: {
             Text(printErrorMessage ?? "")
+        }
+        .alert(
+            AppStrings.localized("无法打开链接"),
+            isPresented: externalLinkErrorBinding
+        ) {
+            Button(AppStrings.localized("知道了"), role: .cancel) {
+                externalLinkErrorMessage = nil
+            }
+        } message: {
+            Text(externalLinkErrorMessage ?? "")
         }
         .alert(
             AppStrings.localized("清除缓存数据？"),
@@ -309,19 +326,124 @@ struct HTMLViewerView: View {
         isRecentlyDeletedViewer || isHubSharePreview
     }
 
-    private var entryDirectoryInstaller: some View {
-        ViewerEntryDirectoryInstaller(
-            entries: page.resolvedEntries,
-            currentEntryID: currentEntry.id,
-            isVisible: showsEntryDirectoryButton,
-            onSelectEntry: { entry in
-                activeEntryID = entry.id
+    @ToolbarContentBuilder
+    private var viewerToolbarContent: some ToolbarContent {
+        if isProjectNavigationChild && !isPhoneLandscape {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismissViewer()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .accessibilityLabel(AppStrings.localized("关闭"))
             }
-        )
+        }
+
+        if showsMoreActionsMenu {
+            ToolbarItem(placement: .primaryAction) {
+                moreActionsButton
+            }
+        }
     }
 
-    private var showsEntryDirectoryButton: Bool {
-        !isPhoneLandscape && page.resolvedEntries.count > 1
+    private var moreActionsButton: some View {
+        Menu {
+            htmlViewerActionsMenuContent
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(AppStrings.localized("更多操作"))
+    }
+
+    private var showsFileListAction: Bool {
+        !isPhoneLandscape && page.resolvedEntries.count > 1 && !isHubSharePreview
+    }
+
+    private var showsStandardMoreActions: Bool {
+        entryExists && !isPhoneLandscape && !isReadOnlyPreview
+    }
+
+    private var showsMoreActionsMenu: Bool {
+        entryExists && !isPhoneLandscape && (showsStandardMoreActions || showsFileListAction)
+    }
+
+    @ViewBuilder
+    private var htmlViewerActionsMenuContent: some View {
+        if showsFileListAction {
+            Button {
+                performActionsMenuAction {
+                    startShowingFileListSheetFromActionsMenu()
+                }
+            } label: {
+                Label(AppStrings.localized("文件列表"), systemImage: "list.bullet")
+            }
+        }
+
+        if showsStandardMoreActions {
+            Section {
+                Button {
+                    performActionsMenuAction {
+                        reloadToken = UUID()
+                    }
+                } label: {
+                    Label(AppStrings.localized("重新加载"), systemImage: "arrow.clockwise")
+                }
+
+                Button {
+                    performActionsMenuAction {
+                        startShowingZoomSheetFromActionsMenu()
+                    }
+                } label: {
+                    Label(AppStrings.localized("缩放"), systemImage: "plus.magnifyingglass")
+                }
+
+                Button {
+                    performActionsMenuAction {
+                        startSharingFromActionsMenu()
+                    }
+                } label: {
+                    Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
+                }
+
+                Button {
+                    performActionsMenuAction {
+                        startPrintingFromActionsMenu()
+                    }
+                } label: {
+                    Label(AppStrings.localized("打印"), systemImage: "printer")
+                }
+
+                if AppDistribution.current.supportsHubShareAuthoring {
+                    Button {
+                        performActionsMenuAction {
+                            startGeneratingHubCodeFromActionsMenu()
+                        }
+                    } label: {
+                        Label(
+                            AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
+                            systemImage: "key.fill"
+                        )
+                    }
+                }
+
+                Button {
+                    performActionsMenuAction {
+                        startRenamingFromActionsMenu()
+                    }
+                } label: {
+                    Label(AppStrings.localized("重命名"), systemImage: "pencil")
+                }
+
+                Button {
+                    performActionsMenuAction {
+                        startClearingCacheFromActionsMenu()
+                    }
+                } label: {
+                    Label(AppStrings.localized("清除缓存"), systemImage: "trash")
+                }
+            }
+        }
     }
 
     private var isPhoneLandscape: Bool {
@@ -346,7 +468,7 @@ struct HTMLViewerView: View {
         VStack {
             HStack {
                 Button {
-                    dismissViewer()
+                    dismiss()
                 } label: {
                     Image(systemName: "chevron.backward")
                         .font(.system(size: 17, weight: .bold))
@@ -373,71 +495,11 @@ struct HTMLViewerView: View {
         }
     }
 
-    @ViewBuilder
-    private var htmlViewerActionsMenuContent: some View {
-        Button {
-            performActionsMenuAction {
-                reloadToken = UUID()
-            }
-        } label: {
-            Label(AppStrings.localized("重新加载"), systemImage: "arrow.clockwise")
-        }
-
-        Button {
-            performActionsMenuAction {
-                startShowingZoomSheetFromActionsMenu()
-            }
-        } label: {
-            Label(AppStrings.localized("缩放"), systemImage: "plus.magnifyingglass")
-        }
-
-        Button {
-            performActionsMenuAction {
-                startSharingFromActionsMenu()
-            }
-        } label: {
-            Label(AppStrings.localized("分享"), systemImage: "square.and.arrow.up")
-        }
-
-        Button {
-            performActionsMenuAction {
-                startPrintingFromActionsMenu()
-            }
-        } label: {
-            Label(AppStrings.localized("打印"), systemImage: "printer")
-        }
-
-        if AppDistribution.current.supportsHubShareAuthoring {
-            Button {
-                performActionsMenuAction {
-                    startGeneratingHubCodeFromActionsMenu()
-                }
-            } label: {
-                Label(
-                    AppStrings.localized(hubShareCache == nil ? "生成暗号" : "查看暗号"),
-                    systemImage: "key.fill"
-                )
-            }
-        }
-
-        Button {
-            performActionsMenuAction {
-                startRenamingFromActionsMenu()
-            }
-        } label: {
-            Label(AppStrings.localized("重命名"), systemImage: "pencil")
-        }
-
-        Button {
-            performActionsMenuAction {
-                startClearingCacheFromActionsMenu()
-            }
-        } label: {
-            Label(AppStrings.localized("清除缓存"), systemImage: "trash")
-        }
-    }
-
     private func dismissViewer() {
+        if let onCloseViewer {
+            onCloseViewer()
+            return
+        }
         dismiss()
     }
 
@@ -457,6 +519,17 @@ struct HTMLViewerView: View {
             return library.entryURL(for: deletedPage, entry: currentEntry)
         }
         return library.entryURL(for: page, entry: currentEntry)
+    }
+
+    private var entryLoadURL: URL {
+        guard activeEntryID == nil else {
+            return entryURL
+        }
+        return entryNavigationState?.applied(to: entryURL) ?? entryURL
+    }
+
+    private var currentEntryNavigationState: WebPageEntryNavigationState? {
+        activeEntryID == nil ? entryNavigationState : nil
     }
 
     private var entryHTML: String? {
@@ -570,6 +643,16 @@ struct HTMLViewerView: View {
         }
     }
 
+    private var externalLinkErrorBinding: Binding<Bool> {
+        Binding {
+            externalLinkErrorMessage != nil
+        } set: { isPresented in
+            if !isPresented {
+                externalLinkErrorMessage = nil
+            }
+        }
+    }
+
     private func errorBar(_ message: String) -> some View {
         AppSurfaceCard {
             HStack(alignment: .top, spacing: 10) {
@@ -600,6 +683,17 @@ struct HTMLViewerView: View {
         }
     }
 
+    private func handleExternalNavigationFailure(_ url: URL) {
+        externalLinkErrorMessage = String(
+            format: AppStrings.localized("系统无法打开这个链接：%@"),
+            url.absoluteString
+        )
+    }
+
+    private func handleUnsupportedNewWindowRequest() {
+        externalLinkErrorMessage = AppStrings.localized("这个网页尝试打开一个新窗口，但 HTML Keep 只能渲染当前网页内容。")
+    }
+
     private func updateLoadingIndicator(for state: ViewerLoadState) {
         switch state {
         case .loading:
@@ -622,10 +716,33 @@ struct HTMLViewerView: View {
     }
 
     private func handleLocalFileNavigation(_ url: URL) {
+        guard isRouteActive else {
+            return
+        }
         guard let matchedEntry = matchedEntry(forLocalFileNavigationURL: url) else {
             return
         }
-        activeEntryID = matchedEntry.id
+        openEntry(matchedEntry, navigationState: WebPageEntryNavigationState(url: url))
+    }
+
+    private func openEntry(_ entry: WebPageEntry, navigationState: WebPageEntryNavigationState?) {
+        guard entry.id != currentEntry.id || navigationState != currentEntryNavigationState else {
+            return
+        }
+        if let onOpenEntry {
+            onOpenEntry(entry, navigationState)
+        } else {
+            activeEntryID = entry.id
+        }
+    }
+
+    private func selectEntryFromFileList(_ entry: WebPageEntry) {
+        guard entry.id != currentEntry.id || currentEntryNavigationState != nil || isProjectNavigationChild else { return }
+        if let onReplaceRootEntry {
+            onReplaceRootEntry(entry)
+        } else {
+            activeEntryID = entry.id
+        }
     }
 
     private func matchedEntry(forLocalFileNavigationURL url: URL) -> WebPageEntry? {
@@ -713,6 +830,10 @@ struct HTMLViewerView: View {
 
     private func startShowingZoomSheetFromActionsMenu() {
         presentedViewerSheet = .zoom
+    }
+
+    private func startShowingFileListSheetFromActionsMenu() {
+        presentedViewerSheet = .fileList
     }
 
     private func refreshHubShareCache() async {
@@ -838,13 +959,142 @@ struct HTMLViewerView: View {
 }
 
 private enum ViewerPresentedSheet: Identifiable {
+    case fileList
     case zoom
 
     var id: String {
         switch self {
+        case .fileList:
+            return "fileList"
         case .zoom:
             return "zoom"
         }
+    }
+}
+
+private struct ViewerFileListSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let entries: [WebPageEntry]
+    let currentEntryID: WebPageEntry.ID
+    let onSelectEntry: (WebPageEntry) -> Void
+
+    private let rowHeight: CGFloat = 58
+    private let verticalContentPadding: CGFloat = 12
+    private let sheetChromeAllowance: CGFloat = 84
+    private let minimumSheetHeight: CGFloat = 220
+
+    private var sheetHeight: CGFloat {
+        let contentHeight = CGFloat(entries.count) * rowHeight + verticalContentPadding
+        let availableHeight = UIScreen.main.bounds.height * 0.72
+        return min(max(minimumSheetHeight, contentHeight + sheetChromeAllowance), availableHeight)
+    }
+
+    private var systemDefaultTextColor: Color {
+        Color(uiColor: .label)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(entries) { entry in
+                        entryRow(entry)
+                    }
+                }
+                .padding(.vertical, verticalContentPadding / 2)
+            }
+            .navigationTitle(AppStrings.localized("文件列表"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    closeButton
+                }
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .presentationDetents([.height(sheetHeight)])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func entryRow(_ entry: WebPageEntry) -> some View {
+        Button {
+            select(entry)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: entry.id == currentEntryID ? "checkmark.circle.fill" : "doc.text")
+                    .symbolRenderingMode(.monochrome)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(systemDefaultTextColor)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(systemDefaultTextColor)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+
+                    Text(entry.entryFileName)
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .layoutPriority(1)
+
+                Spacer(minLength: 12)
+
+                if entry.lastLoadStatus != .ready {
+                    Text(entry.lastLoadStatus.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color(uiColor: .secondaryLabel))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: rowHeight, alignment: .leading)
+            .padding(.horizontal, 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(entry.lastLoadStatus != .ready)
+        .accessibilityLabel(accessibilityLabel(for: entry))
+    }
+
+    private var closeButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
+        }
+        .foregroundStyle(systemDefaultTextColor)
+        .accessibilityLabel(AppStrings.localized("关闭"))
+    }
+
+    private func select(_ entry: WebPageEntry) {
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            onSelectEntry(entry)
+        }
+    }
+
+    private func statusText(for entry: WebPageEntry) -> String? {
+        if entry.lastLoadStatus != .ready {
+            return entry.lastLoadStatus.title
+        }
+        if entry.id == currentEntryID {
+            return AppStrings.localized("当前页面")
+        }
+        return nil
+    }
+
+    private func accessibilityLabel(for entry: WebPageEntry) -> String {
+        var parts = [entry.title, entry.entryFileName]
+        if let status = statusText(for: entry) {
+            parts.append(status)
+        }
+        return parts.joined(separator: "，")
     }
 }
 
@@ -2222,267 +2472,6 @@ private extension UIColor {
         }
     }
 
-}
-
-private struct ViewerEntryDirectoryInstaller: UIViewControllerRepresentable {
-    let entries: [WebPageEntry]
-    let currentEntryID: WebPageEntry.ID
-    let isVisible: Bool
-    let onSelectEntry: (WebPageEntry) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(
-            entries: entries,
-            currentEntryID: currentEntryID,
-            onSelectEntry: onSelectEntry
-        )
-    }
-
-    func makeUIViewController(context: Context) -> ViewerEntryDirectoryViewController {
-        ViewerEntryDirectoryViewController(coordinator: context.coordinator)
-    }
-
-    func updateUIViewController(_ uiViewController: ViewerEntryDirectoryViewController, context: Context) {
-        context.coordinator.entries = entries
-        context.coordinator.currentEntryID = currentEntryID
-        context.coordinator.onSelectEntry = onSelectEntry
-        uiViewController.isVisible = isVisible
-        uiViewController.applyDirectoryItem()
-    }
-
-    final class Coordinator: NSObject, UIPopoverPresentationControllerDelegate {
-        var entries: [WebPageEntry]
-        var currentEntryID: WebPageEntry.ID
-        var onSelectEntry: (WebPageEntry) -> Void
-        var directoryItem: UIBarButtonItem?
-        weak var presenter: UIViewController?
-        weak var popoverController: UIViewController?
-
-        init(
-            entries: [WebPageEntry],
-            currentEntryID: WebPageEntry.ID,
-            onSelectEntry: @escaping (WebPageEntry) -> Void
-        ) {
-            self.entries = entries
-            self.currentEntryID = currentEntryID
-            self.onSelectEntry = onSelectEntry
-        }
-
-        @objc func openDirectory() {
-            guard let presenter,
-                  let directoryItem,
-                  entries.count > 1 else {
-                return
-            }
-
-            popoverController?.dismiss(animated: false)
-
-            let content = ViewerEntryDirectoryPopoverContent(
-                entries: entries,
-                currentEntryID: currentEntryID,
-                onSelectEntry: { [weak self] entry in
-                    self?.popoverController?.dismiss(animated: true)
-                    self?.onSelectEntry(entry)
-                }
-            )
-            let hostingController = UIHostingController(rootView: content)
-            hostingController.modalPresentationStyle = .popover
-            hostingController.preferredContentSize = CGSize(
-                width: min(UIScreen.main.bounds.width - 32, 320),
-                height: min(CGFloat(entries.count) * 59 + 16, 420)
-            )
-
-            guard let popover = hostingController.popoverPresentationController else {
-                return
-            }
-            popover.delegate = self
-            popover.permittedArrowDirections = .any
-            if #available(iOS 16.0, *) {
-                popover.sourceItem = directoryItem
-            } else {
-                popover.sourceView = presenter.view
-                popover.sourceRect = CGRect(
-                    x: presenter.view.bounds.minX + 44,
-                    y: presenter.view.safeAreaInsets.top,
-                    width: 1,
-                    height: 1
-                )
-            }
-
-            popoverController = hostingController
-            presenter.present(hostingController, animated: true)
-        }
-
-        func adaptivePresentationStyle(
-            for controller: UIPresentationController,
-            traitCollection: UITraitCollection
-        ) -> UIModalPresentationStyle {
-            .none
-        }
-    }
-}
-
-private final class ViewerEntryDirectoryViewController: UIViewController {
-    weak var coordinator: ViewerEntryDirectoryInstaller.Coordinator?
-    var isVisible = false
-
-    init(coordinator: ViewerEntryDirectoryInstaller.Coordinator) {
-        self.coordinator = coordinator
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    @available(*, unavailable)
-    required init?(coder _: NSCoder) {
-        nil
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        applyDirectoryItem()
-    }
-
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        removeDirectoryItem()
-    }
-
-    func applyDirectoryItem() {
-        guard let navigationController,
-              let coordinator,
-              let viewerViewController = owningNavigationStackViewController(in: navigationController),
-              navigationController.topViewController === viewerViewController,
-              isVisible else {
-            removeDirectoryItem()
-            return
-        }
-
-        let directoryItem: UIBarButtonItem
-        if let existingItem = coordinator.directoryItem {
-            directoryItem = existingItem
-        } else {
-            directoryItem = UIBarButtonItem(
-                image: UIImage(systemName: "list.bullet"),
-                style: .plain,
-                target: coordinator,
-                action: #selector(ViewerEntryDirectoryInstaller.Coordinator.openDirectory)
-            )
-            coordinator.directoryItem = directoryItem
-        }
-        directoryItem.accessibilityLabel = AppStrings.localized("页面目录")
-        coordinator.presenter = viewerViewController
-
-        let navigationItem = viewerViewController.navigationItem
-        navigationItem.leftItemsSupplementBackButton = true
-        if navigationItem.leftBarButtonItems?.contains(where: { $0 === directoryItem }) != true {
-            navigationItem.leftBarButtonItems = [directoryItem]
-        }
-    }
-
-    private func removeDirectoryItem() {
-        guard let directoryItem = coordinator?.directoryItem,
-              let navigationController else {
-            return
-        }
-
-        let navigationItem = navigationController.topViewController?.navigationItem
-        navigationItem?.leftBarButtonItems = navigationItem?.leftBarButtonItems?.filter { $0 !== directoryItem }
-        if navigationItem?.leftBarButtonItems?.isEmpty == true {
-            navigationItem?.leftBarButtonItems = nil
-            navigationItem?.leftItemsSupplementBackButton = false
-        }
-    }
-
-    private func owningNavigationStackViewController(in navigationController: UINavigationController) -> UIViewController? {
-        var current: UIViewController? = self
-        while let parent = current?.parent, parent !== navigationController {
-            current = parent
-        }
-        return current
-    }
-}
-
-private struct ViewerEntryDirectoryPopoverContent: View {
-    let entries: [WebPageEntry]
-    let currentEntryID: WebPageEntry.ID
-    let onSelectEntry: (WebPageEntry) -> Void
-
-    var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(entries) { entry in
-                    entryRow(entry)
-                }
-            }
-            .padding(.vertical, 8)
-        }
-        .frame(
-            width: min(UIScreen.main.bounds.width - 32, 320),
-            height: min(CGFloat(entries.count) * 59 + 16, 420)
-        )
-    }
-
-    private func entryRow(_ entry: WebPageEntry) -> some View {
-        Button {
-            onSelectEntry(entry)
-        } label: {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.title)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(AppTheme.listItemTitle)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-
-                    Text(entry.entryFileName)
-                        .font(.system(size: 14))
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-                .layoutPriority(1)
-
-                Spacer(minLength: 12)
-
-                if entry.lastLoadStatus != .ready {
-                    Text(entry.lastLoadStatus.title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(AppTheme.textSecondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .multilineTextAlignment(.trailing)
-                } else if entry.id == currentEntryID {
-                    Image(systemName: "checkmark.circle.fill")
-                        .symbolRenderingMode(.monochrome)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(AppTheme.deepWater)
-                        .accessibilityHidden(true)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
-            .padding(.horizontal, 14)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel(for: entry))
-    }
-
-    private func statusText(for entry: WebPageEntry) -> String? {
-        if entry.lastLoadStatus != .ready {
-            return entry.lastLoadStatus.title
-        }
-        if entry.id == currentEntryID {
-            return AppStrings.localized("当前页面")
-        }
-        return nil
-    }
-
-    private func accessibilityLabel(for entry: WebPageEntry) -> String {
-        var parts = [entry.title, entry.entryFileName]
-        if let status = statusText(for: entry) {
-            parts.append(status)
-        }
-        return parts.joined(separator: "，")
-    }
 }
 
 struct WebPageShareExporter {
