@@ -441,7 +441,8 @@ struct WebPageWebView: UIViewRepresentable {
         }
 
         func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            onScrollOffsetChange(normalizedTopScrollOffset(for: scrollView))
+            let hasRealVerticalScrollRange = hasRealVerticalScrollRange(in: scrollView)
+            onScrollOffsetChange(hasRealVerticalScrollRange ? normalizedTopScrollOffset(for: scrollView) : 0)
 
             guard !restoreBrowserTapOffsetIfNeeded(in: scrollView) else {
                 return
@@ -450,6 +451,36 @@ struct WebPageWebView: UIViewRepresentable {
             if scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating {
                 lastStableContentOffset = scrollView.contentOffset
             } else if browserTapSuppressionOffset == nil {
+                lastStableContentOffset = scrollView.contentOffset
+            }
+        }
+
+        func scrollViewWillEndDragging(
+            _ scrollView: UIScrollView,
+            withVelocity velocity: CGPoint,
+            targetContentOffset: UnsafeMutablePointer<CGPoint>
+        ) {
+            guard !hasRealVerticalScrollRange(in: scrollView) else {
+                return
+            }
+
+            targetContentOffset.pointee.y = topInsetAnchoredOffsetY(for: scrollView)
+        }
+
+        func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+            guard !decelerate else {
+                return
+            }
+
+            restoreTopInsetAnchorForShortDocumentIfNeeded(in: scrollView, animated: true)
+        }
+
+        func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+            restoreTopInsetAnchorForShortDocumentIfNeeded(in: scrollView, animated: true)
+        }
+
+        func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+            if !hasRealVerticalScrollRange(in: scrollView) {
                 lastStableContentOffset = scrollView.contentOffset
             }
         }
@@ -672,6 +703,38 @@ struct WebPageWebView: UIViewRepresentable {
 
         private func normalizedTopScrollOffset(for scrollView: UIScrollView) -> CGFloat {
             max(scrollView.contentOffset.y + scrollView.adjustedContentInset.top, 0)
+        }
+
+        private func hasRealVerticalScrollRange(in scrollView: UIScrollView) -> Bool {
+            scrollView.contentSize.height > scrollView.bounds.height + 1
+        }
+
+        private func topInsetAnchoredOffsetY(for scrollView: UIScrollView) -> CGFloat {
+            -scrollView.adjustedContentInset.top
+        }
+
+        private func restoreTopInsetAnchorForShortDocumentIfNeeded(
+            in scrollView: UIScrollView,
+            animated: Bool
+        ) {
+            guard !hasRealVerticalScrollRange(in: scrollView),
+                  !scrollView.isTracking,
+                  !scrollView.isDragging,
+                  !scrollView.isDecelerating else {
+                return
+            }
+
+            let topOffsetY = topInsetAnchoredOffsetY(for: scrollView)
+            guard abs(scrollView.contentOffset.y - topOffsetY) > 0.5 else {
+                return
+            }
+
+            scrollView.setContentOffset(
+                CGPoint(x: scrollView.contentOffset.x, y: topOffsetY),
+                animated: animated
+            )
+            lastStableContentOffset = CGPoint(x: scrollView.contentOffset.x, y: topOffsetY)
+            onScrollOffsetChange(0)
         }
 
         func webView(
